@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useMediaQuery } from "usehooks-ts";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Users,
   MessageSquare,
@@ -77,7 +77,7 @@ const Dashboard = () => {
   });
   const [showRoom, setShowRoom] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
 
   const renderSidebarContent = useCallback(() => {
     switch (activeTab) {
@@ -192,36 +192,38 @@ const Dashboard = () => {
       </div>
 
       {/* ── Bottom Navigation (Mobile) ── */}
-      <nav className="lg:hidden bg-[#12121f] border-t border-white/[0.06] flex justify-around items-center py-1.5 px-2 z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
-        {bottomNavTabs.map((tabId) => {
-          const tab = TABS.find((t) => t.id === tabId);
-          if (!tab) return null;
-          const isActive = activeTab === tabId;
-          return (
-            <button
-              key={tabId}
-              onClick={() => setActiveTab(tabId)}
-              className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl transition-all relative ${
-                isActive ? "text-primary" : "text-white/40"
-              }`}
-            >
-              <div
-                className={`p-1.5 rounded-lg transition-colors ${
-                  isActive ? "bg-primary/10" : ""
+      {isMobile && (
+        <nav className="bg-[#12121f] border-t border-white/[0.06] flex justify-around items-center py-1.5 px-2 z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
+          {bottomNavTabs.map((tabId) => {
+            const tab = TABS.find((t) => t.id === tabId);
+            if (!tab) return null;
+            const isActive = activeTab === tabId;
+            return (
+              <button
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl transition-all relative ${
+                  isActive ? "text-primary" : "text-white/40"
                 }`}
               >
-                {tab.icon({ size: 20, strokeWidth: isActive ? 2.5 : 1.8 })}
-              </div>
-              <span className="text-[9px] font-bold whitespace-nowrap">{tab.label}</span>
-              {tab.badge && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold border border-[#12121f]">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
+                <div
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    isActive ? "bg-primary/10" : ""
+                  }`}
+                >
+                  {tab.icon({ size: 20, strokeWidth: isActive ? 2.5 : 1.8 })}
+                </div>
+                <span className="text-[9px] font-bold whitespace-nowrap">{tab.label}</span>
+                {tab.badge && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold border border-[#12121f]">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 };
