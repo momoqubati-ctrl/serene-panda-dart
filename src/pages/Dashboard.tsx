@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Users, MessageSquare, Home, LayoutGrid, Camera, Settings, Bell, Search, Menu } from 'lucide-react';
+import { Users, MessageSquare, Home, LayoutGrid, Settings, Bell, Search, Gift } from 'lucide-react';
 import MemberList from '@/components/chat/MemberList';
 import RoomList from '@/components/chat/RoomList';
 import WallFeed from '@/components/chat/WallFeed';
 import PrivateList from '@/components/chat/PrivateList';
 import SettingsPanel from '@/components/chat/SettingsPanel';
 import StoriesBar from '@/components/chat/StoriesBar';
+import GiftStore from '@/components/chat/GiftStore';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('members');
@@ -19,6 +20,7 @@ const Dashboard = () => {
       case 'wall': return <WallFeed />;
       case 'private': return <PrivateList />;
       case 'settings': return <SettingsPanel />;
+      case 'store': return <GiftStore />;
       default: return <MemberList />;
     }
   };
@@ -30,6 +32,7 @@ const Dashboard = () => {
       case 'wall': return 'الحائط';
       case 'private': return 'الخاصة';
       case 'settings': return 'الإعدادات';
+      case 'store': return 'متجر الهدايا';
       default: return 'المتواجدين';
     }
   };
@@ -82,6 +85,12 @@ const Dashboard = () => {
           onClick={() => setActiveTab('rooms')} 
           icon={<Home size={24} />} 
           label="الغرف" 
+        />
+        <NavButton 
+          active={activeTab === 'store'} 
+          onClick={() => setActiveTab('store')} 
+          icon={<Gift size={24} />} 
+          label="المتجر" 
         />
         <NavButton 
           active={activeTab === 'wall'} 
