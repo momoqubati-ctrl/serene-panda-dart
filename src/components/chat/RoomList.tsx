@@ -2,72 +2,79 @@
 
 import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
-import { Users, Lock, Mic2, Heart, Crown } from 'lucide-react';
+import { Users, Lock, Mic2, Heart, Crown, Search, Plus } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import RoomPage from './RoomPage';
+import { Input } from "@/components/ui/input";
 
 const MOCK_ROOMS = [
-  { id: 1, name: 'الغرفة الرئيسية', desc: 'أهلاً بكم في الغرفة العامة للجميع', members: 450, mics: 5, likes: 1000, locked: false, owner: 'المدير العام', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop' },
+  { id: 1, name: 'الغرفة العامة', desc: 'أهلاً بكم في الغرفة العامة للجميع', members: 1245, mics: 5, likes: 1000, locked: false, owner: 'مستر سهم', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop' },
   { id: 2, name: 'غرفة المسابقات', desc: 'جوائز يومية ومسابقات ثقافية', members: 120, mics: 3, likes: 500, locked: true, owner: 'المشرف الذهبي', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop' },
   { id: 3, name: 'عالم الرومانسية', desc: 'أجمل الأغاني والقصائد', members: 85, mics: 8, likes: 2500, locked: false, owner: 'ليلى', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop' },
 ];
 
-const RoomList = () => {
-  const [activeRoom, setActiveRoom] = useState<any>(null);
-
-  if (activeRoom) {
-    return <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} />;
-  }
+const RoomList = ({ onSelectRoom }: any) => {
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="p-4 grid grid-cols-1 gap-4">
-      {MOCK_ROOMS.map((room) => (
-        <Card 
-          key={room.id} 
-          onClick={() => setActiveRoom(room)}
-          className="overflow-hidden border-none shadow-sm rounded-2xl group cursor-pointer hover:shadow-md transition-all"
-        >
-          <div className="flex h-32">
-            <div className="w-32 h-full relative shrink-0">
-              <img src={room.image} alt={room.name} className="w-full h-full object-cover" />
+    <div className="flex flex-col h-full bg-white rtl">
+      {/* Search Header */}
+      <div className="p-3 bg-[#2c3e50] flex items-center gap-2">
+        <div className="flex-1 relative">
+          <Input 
+            placeholder="بحث عن غرفة .." 
+            className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+        </div>
+        <button className="bg-green-500 text-white p-1.5 rounded-md hover:bg-green-600 transition-colors">
+          <Plus size={16} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {MOCK_ROOMS.map((room) => (
+          <div 
+            key={room.id} 
+            onClick={() => onSelectRoom(room)}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 group"
+          >
+            <div className="relative shrink-0">
+              <img src={room.image} alt={room.name} className="w-12 h-12 object-cover rounded-lg shadow-sm" />
               {room.locked && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Lock className="text-white" size={24} />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-lg">
+                  <Lock className="text-white" size={12} />
                 </div>
               )}
             </div>
-            <div className="flex-1 p-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-bold text-slate-800 truncate">{room.name}</h3>
-                  <div className="flex items-center gap-1 text-pink-500">
-                    <Heart size={14} fill="currentColor" />
-                    <span className="text-xs font-bold">{room.likes}</span>
-                  </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-0.5">
+                <h4 className="font-black text-xs text-slate-800 truncate">{room.name}</h4>
+                <div className="flex items-center gap-1 text-pink-500">
+                  <Heart size={10} fill="currentColor" />
+                  <span className="text-[9px] font-bold">{room.likes}</span>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2 mb-2">{room.desc}</p>
               </div>
-              
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <Users size={14} />
-                    <span className="text-xs font-bold">{room.members}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-0.5 text-slate-400">
+                    <Users size={10} />
+                    <span className="text-[9px] font-bold">{room.members}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <Mic2 size={14} />
-                    <span className="text-xs font-bold">{room.mics}</span>
+                  <div className="flex items-center gap-0.5 text-slate-400">
+                    <Mic2 size={10} />
+                    <span className="text-[9px] font-bold">{room.mics}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] text-primary font-bold bg-primary/5 px-2 py-1 rounded-lg">
-                  <Crown size={12} />
-                  <span>{room.owner}</span>
-                </div>
+                <span className="text-[9px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-sm">
+                  {room.owner}
+                </span>
               </div>
             </div>
           </div>
-        </Card>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
