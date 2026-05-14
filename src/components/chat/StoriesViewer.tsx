@@ -20,7 +20,6 @@ const StoriesViewer = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* Add Story Card */}
         <div className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-slate-800 border border-white/5 group cursor-pointer">
           <img 
             src="https://i.pravatar.cc/150?u=me" 
@@ -36,7 +35,6 @@ const StoriesViewer = () => {
           </div>
         </div>
 
-        {/* Stories List */}
         {MOCK_STORIES.map((story) => (
           <div key={story.id} className="relative aspect-[9/16] rounded-2xl overflow-hidden border border-white/5 group cursor-pointer">
             <img 
