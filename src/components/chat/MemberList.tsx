@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Shield, Crown, Star, Gift, MapPin } from 'lucide-react';
+import { Shield, Crown, Star, Gift, MapPin, Users } from 'lucide-react';
+import ProfileModal from './ProfileModal';
 
 const MOCK_MEMBERS = [
   { id: 1, name: 'المدير العام', role: 'admin', rank: 100, color: 'text-red-600', bg: 'bg-red-50', status: 'online', room: 'الغرفة الرئيسية', country: 'SA', points: 5000, rep: 120, avatar: 'https://i.pravatar.cc/150?u=1' },
@@ -13,11 +14,13 @@ const MOCK_MEMBERS = [
 ];
 
 const MemberList = () => {
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm">
         <div className="flex items-center gap-2">
-          <UsersIcon className="text-primary" size={20} />
+          <Users className="text-primary" size={20} />
           <span className="font-bold text-slate-700">المتواجدون (1,245)</span>
         </div>
         <div className="text-xs text-slate-400">ترتيب حسب الرتبة</div>
@@ -26,6 +29,7 @@ const MemberList = () => {
       {MOCK_MEMBERS.sort((a, b) => b.rank - a.rank).map((member) => (
         <div 
           key={member.id} 
+          onClick={() => setSelectedUser(member)}
           className={`flex items-center gap-3 p-3 rounded-2xl border border-transparent hover:border-primary/20 transition-all cursor-pointer bg-white shadow-sm`}
         >
           <div className="relative">
@@ -62,14 +66,14 @@ const MemberList = () => {
           </div>
         </div>
       ))}
+
+      <ProfileModal 
+        user={selectedUser} 
+        isOpen={!!selectedUser} 
+        onClose={() => setSelectedUser(null)} 
+      />
     </div>
   );
 };
-
-const UsersIcon = ({ className, size }: any) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
 
 export default MemberList;

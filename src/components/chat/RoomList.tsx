@@ -1,9 +1,10 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Users, Lock, Mic2, Heart, Crown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import RoomPage from './RoomPage';
 
 const MOCK_ROOMS = [
   { id: 1, name: 'الغرفة الرئيسية', desc: 'أهلاً بكم في الغرفة العامة للجميع', members: 450, mics: 5, likes: 1000, locked: false, owner: 'المدير العام', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop' },
@@ -12,10 +13,20 @@ const MOCK_ROOMS = [
 ];
 
 const RoomList = () => {
+  const [activeRoom, setActiveRoom] = useState<any>(null);
+
+  if (activeRoom) {
+    return <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} />;
+  }
+
   return (
     <div className="p-4 grid grid-cols-1 gap-4">
       {MOCK_ROOMS.map((room) => (
-        <Card key={room.id} className="overflow-hidden border-none shadow-sm rounded-2xl group cursor-pointer hover:shadow-md transition-all">
+        <Card 
+          key={room.id} 
+          onClick={() => setActiveRoom(room)}
+          className="overflow-hidden border-none shadow-sm rounded-2xl group cursor-pointer hover:shadow-md transition-all"
+        >
           <div className="flex h-32">
             <div className="w-32 h-full relative shrink-0">
               <img src={room.image} alt={room.name} className="w-full h-full object-cover" />
