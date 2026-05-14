@@ -9,6 +9,7 @@ import PrivateList from '@/components/chat/PrivateList';
 import SettingsPanel from '@/components/chat/SettingsPanel';
 import StoriesBar from '@/components/chat/StoriesBar';
 import GiftStore from '@/components/chat/GiftStore';
+import NotificationCenter from '@/components/chat/NotificationCenter';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('members');
@@ -21,6 +22,7 @@ const Dashboard = () => {
       case 'private': return <PrivateList />;
       case 'settings': return <SettingsPanel />;
       case 'store': return <GiftStore />;
+      case 'notifications': return <NotificationCenter />;
       default: return <MemberList />;
     }
   };
@@ -33,6 +35,7 @@ const Dashboard = () => {
       case 'private': return 'الخاصة';
       case 'settings': return 'الإعدادات';
       case 'store': return 'متجر الهدايا';
+      case 'notifications': return 'التنبيهات';
       default: return 'المتواجدين';
     }
   };
@@ -46,8 +49,11 @@ const Dashboard = () => {
           <h2 className="font-bold text-lg text-slate-800">{getTitle()}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-slate-100 rounded-full relative">
-            <Bell size={22} className="text-slate-600" />
+          <button 
+            onClick={() => setActiveTab('notifications')}
+            className={`p-2 rounded-full relative transition-colors ${activeTab === 'notifications' ? 'bg-primary/10 text-primary' : 'hover:bg-slate-100 text-slate-600'}`}
+          >
+            <Bell size={22} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
           </button>
           <button className="p-2 hover:bg-slate-100 rounded-full">
