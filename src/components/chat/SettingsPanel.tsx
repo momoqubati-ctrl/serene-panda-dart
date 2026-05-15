@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 import { 
   User, 
   Palette, 
@@ -14,12 +15,16 @@ import {
   Bell, 
   Lock, 
   Eye,
-  Smartphone
+  Smartphone,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 const SettingsPanel = () => {
+  const { theme, setTheme } = useTheme();
+
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div className="p-4 space-y-4 pb-24 overflow-y-auto h-full">
       {/* Profile Summary */}
       <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-gradient-to-br from-primary to-blue-600 text-white">
         <CardContent className="p-6">
@@ -41,6 +46,28 @@ const SettingsPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Theme Toggle */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">المظهر</h4>
+        <button 
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl shadow-sm hover:bg-slate-50 dark:hover:bg-white/10 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-xl group-hover:bg-white dark:group-hover:bg-white/10 transition-colors">
+              {theme === "dark" ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} className="text-blue-500" />}
+            </div>
+            <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
+              {theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-400">{theme === "dark" ? "Light" : "Dark"}</span>
+            <ChevronLeft size={18} className="text-slate-300" />
+          </div>
+        </button>
+      </div>
 
       {/* Settings Groups */}
       <div className="space-y-3">
@@ -71,12 +98,12 @@ const SettingsPanel = () => {
 };
 
 const SettingsItem = ({ icon, label, danger }: any) => (
-  <button className="w-full flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm hover:bg-slate-50 transition-colors group">
+  <button className="w-full flex items-center justify-between p-4 bg-white dark:bg-white/5 rounded-2xl shadow-sm hover:bg-slate-50 dark:hover:bg-white/10 transition-colors group">
     <div className="flex items-center gap-3">
-      <div className="p-2 bg-slate-50 rounded-xl group-hover:bg-white transition-colors">
+      <div className="p-2 bg-slate-50 dark:bg-white/5 rounded-xl group-hover:bg-white dark:group-hover:bg-white/10 transition-colors">
         {icon}
       </div>
-      <span className={`font-bold text-sm ${danger ? 'text-red-500' : 'text-slate-700'}`}>{label}</span>
+      <span className={`font-bold text-sm ${danger ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>{label}</span>
     </div>
     <ChevronLeft size={18} className="text-slate-300" />
   </button>
