@@ -96,7 +96,10 @@ const Dashboard = () => {
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
       {/* Mobile Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="right" className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl">
+        <SheetContent 
+          side="right" 
+          className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0"
+        >
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
               <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
@@ -224,7 +227,7 @@ const Dashboard = () => {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden bg-white border-t border-slate-200 flex justify-around items-center py-2 px-2 z-30 shadow-lg">
+      <nav className="lg:hidden h-16 bg-white border-t border-slate-200 flex justify-around items-center py-2 px-2 z-30 shadow-lg">
         {bottomNavTabs.map((tabId) => {
           const tab = TABS.find((t) => t.id === tabId);
           if (!tab) return null;
