@@ -84,6 +84,11 @@ const Dashboard = () => {
     return tab ? tab.label : "";
   }, [activeTab]);
 
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    setSidebarOpen(true);
+  };
+
   const bottomNavTabs = ["members", "private", "rooms", "wall", "stories", "settings"];
   const sidebarNavTabs = TABS;
 
@@ -134,7 +139,7 @@ const Dashboard = () => {
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black">{onlineCount.toLocaleString('ar-SA')} متصل</span>
           </div>
-          <Button variant="ghost" size="icon" className="rounded-xl bg-slate-50 text-slate-500" onClick={() => setActiveTab("notifications")}>
+          <Button variant="ghost" size="icon" className="rounded-xl bg-slate-50 text-slate-500" onClick={() => handleTabClick("notifications")}>
             <Bell size={18} />
           </Button>
         </div>
@@ -210,8 +215,8 @@ const Dashboard = () => {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                <Button onClick={() => setActiveTab("rooms")} className="font-bold rounded-xl h-11 shadow-lg shadow-primary/20">استعراض الغرف</Button>
-                <Button onClick={() => setActiveTab("wall")} variant="outline" className="bg-white border-slate-200 font-bold rounded-xl h-11">الحائط العام</Button>
+                <Button onClick={() => handleTabClick("rooms")} className="font-bold rounded-xl h-11 shadow-lg shadow-primary/20">استعراض الغرف</Button>
+                <Button onClick={() => handleTabClick("wall")} variant="outline" className="bg-white border-slate-200 font-bold rounded-xl h-11">الحائط العام</Button>
               </div>
             </div>
           )}
@@ -228,7 +233,7 @@ const Dashboard = () => {
           return (
             <button
               key={tabId}
-              onClick={() => setActiveTab(tabId)}
+              onClick={() => handleTabClick(tabId)}
               className={`flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-xl transition-all ${isActive ? "text-primary" : "text-slate-400"}`}
             >
               <div className={`p-2 rounded-xl transition-all ${isActive ? "bg-primary/10 scale-110" : "hover:bg-slate-50"}`}>
