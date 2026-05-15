@@ -95,10 +95,10 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
       {/* Mobile Sidebar Sheet */}
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen} modal={false}>
         <SheetContent 
           side="right" 
-          className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0"
+          className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0 shadow-2xl"
         >
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
