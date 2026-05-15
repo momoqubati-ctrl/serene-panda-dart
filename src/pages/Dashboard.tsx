@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 /* ── Sub Components ─────────────────────────────────────────── */
 import MemberList from "@/components/chat/MemberList";
@@ -83,6 +84,7 @@ const Dashboard = () => {
   }, [activeTab]);
 
   const bottomNavTabs = ["members", "private", "rooms", "wall", "stories", "settings"];
+  const sidebarNavTabs = TABS; // All tabs for desktop sidebar
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
@@ -135,7 +137,40 @@ const Dashboard = () => {
             <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
             <Badge variant="secondary" className="text-[10px] bg-green-50 text-green-600 border-green-100">نشط الآن</Badge>
           </div>
-          <div className="flex-1 overflow-hidden">{renderSidebarContent()}</div>
+          
+          <div className="flex-1 overflow-hidden">
+            {renderSidebarContent()}
+          </div>
+
+          {/* Desktop Sidebar Bottom Navigation */}
+          <div className="p-2 border-t border-slate-100 bg-slate-50/50 grid grid-cols-5 gap-1">
+            {sidebarNavTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const IconComponent = tab.icon;
+              return (
+                <Tooltip key={tab.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all relative ${
+                        isActive ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-400 hover:bg-white hover:text-slate-600"
+                      }`}
+                    >
+                      <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      {tab.badge && !isActive && (
+                        <span className="absolute top-1 right-1 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full min-w-[12px] text-center">
+                          {tab.badge}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-[10px] font-bold">
+                    {tab.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
         </div>
 
         {/* Main Content Area */}
@@ -162,7 +197,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Mobile Bottom Navigation */}
       <nav className="lg:hidden bg-white border-t border-slate-200 flex justify-around items-center py-2 px-2 z-30 shadow-lg">
         {bottomNavTabs.map((tabId) => {
           const tab = TABS.find((t) => t.id === tabId);
