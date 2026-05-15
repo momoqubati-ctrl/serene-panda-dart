@@ -93,12 +93,12 @@ const Dashboard = () => {
   const sidebarNavTabs = TABS;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 ltr overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
       {/* Mobile Sidebar Sheet */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen} modal={false}>
         <SheetContent 
-          side="left" 
-          className="w-[320px] bg-white border-r border-slate-200 p-0 flex flex-col ltr h-[calc(100%-64px)] bottom-16 top-0 shadow-2xl"
+          side="right" 
+          className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0 shadow-2xl"
         >
           <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ const Dashboard = () => {
       {/* Main Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:flex w-80 bg-white border-r border-slate-200 flex-col shadow-sm z-10">
+        <div className="hidden lg:flex w-80 bg-white border-l border-slate-200 flex-col shadow-sm z-10">
           <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
               <h2 className="font-black text-[11px] text-slate-800">{getSidebarTitle()}</h2>
@@ -187,7 +187,7 @@ const Dashboard = () => {
                     >
                       <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
                       {tab.badge && !isActive && (
-                        <span className="absolute top-1 right-1 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full min-w-[12px] text-center">
+                        <span className="absolute top-1 left-1 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full min-w-[12px] text-center">
                           {tab.badge}
                         </span>
                       )}

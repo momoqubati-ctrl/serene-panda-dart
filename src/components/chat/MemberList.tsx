@@ -26,13 +26,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col h-full bg-white ltr">
+    <div className="flex flex-col h-full bg-white">
       {/* Stories Bar at the very top */}
       <StoriesBar />
 
       {/* Search Header - Conditionally Rendered */}
       {isSearchOpen && (
-        <div className="p-3 bg-[#2c3e50] flex items-center gap-2 animate-in slide-in-from-top duration-200">
+        <div className="p-3 bg-[#2c3e50] flex items-center gap-2 animate-in slide-in-from-top duration-200 ltr">
           <div className="flex-1 relative">
             <Input 
               placeholder="Search .." 
@@ -58,7 +58,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           <div 
             key={member.id} 
             onClick={() => setSelectedUser(member)}
-            className={`flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50`}
+            className={`flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 ltr`}
           >
             <div className="relative shrink-0">
               <Avatar className="w-12 h-12 rounded-full border-2 border-white shadow-sm">
