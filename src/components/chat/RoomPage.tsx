@@ -21,7 +21,8 @@ import {
   VolumeX,
   Crown,
   MessageSquareOff,
-  MicOff
+  MicOff,
+  ChevronLeft
 } from 'lucide-react';
 
 const MOCK_MESSAGES = [
@@ -62,13 +63,13 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white rtl ${!isEmbedded ? 'fixed inset-0 z-[60]' : ''}`}>
+    <div className={`flex flex-col h-full bg-white ltr ${!isEmbedded ? 'fixed inset-0 z-[60]' : ''}`}>
       {/* Room Header */}
       <header className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
-              <ChevronRight size={24} />
+              <ChevronLeft size={24} />
             </Button>
           )}
           <div className="relative">
@@ -83,7 +84,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
               <h3 className="font-black text-xs leading-tight text-slate-800">{room.name}</h3>
               <Crown size={12} className="text-yellow-500" />
             </div>
-            <p className="text-[9px] text-slate-400 font-bold">بواسطة: {room.owner}</p>
+            <p className="text-[9px] text-slate-400 font-bold">By: {room.owner}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -120,7 +121,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
                 </div>
               </div>
               <span className="text-[8px] font-bold text-slate-500 truncate w-12 text-center">
-                {i === 1 ? 'مستر سهم' : 'فارغ'}
+                {i === 1 ? 'مستر سهم' : 'Empty'}
               </span>
             </div>
           ))}
@@ -141,9 +142,9 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h4 className={`text-[11px] font-black ${msg.color}`}>{msg.user}</h4>
                 {msg.isOwner && <Badge className="h-3.5 text-[8px] px-1 bg-blue-600 text-white border-none font-black rounded-sm">مالك الموقع</Badge>}
-                <span className="text-[8px] text-slate-400 font-bold mr-auto">{msg.time}</span>
+                <span className="text-[8px] text-slate-400 font-bold ml-auto">{msg.time}</span>
               </div>
-              <div className={`relative p-2.5 rounded-2xl rounded-tr-none inline-block max-w-[90%] shadow-sm border ${msg.isSystem ? 'bg-teal-50 border-teal-100 text-teal-700' : 'bg-white border-slate-100 text-slate-700'}`}>
+              <div className={`relative p-2.5 rounded-2xl rounded-tl-none inline-block max-w-[90%] shadow-sm border ${msg.isSystem ? 'bg-teal-50 border-teal-100 text-teal-700' : 'bg-white border-slate-100 text-slate-700'}`}>
                 <p className="text-xs font-bold leading-relaxed break-words">{msg.text}</p>
               </div>
             </div>
@@ -164,14 +165,14 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
           </div>
           <div className="flex-1 relative">
             <Input 
-              placeholder="اكتب رسالتك هنا..." 
+              placeholder="Type message..." 
               className="h-10 bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-1 focus-visible:ring-primary text-slate-800 font-bold placeholder:text-slate-400 text-xs"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
           </div>
           <Button type="submit" disabled={!message.trim()} className={`w-10 h-10 rounded-xl p-0 shadow-lg ${message.trim() ? 'bg-primary shadow-primary/20' : 'bg-slate-100 text-slate-400'}`}>
-            <Send size={18} className="rotate-180" />
+            <Send size={18} />
           </Button>
         </form>
       </div>

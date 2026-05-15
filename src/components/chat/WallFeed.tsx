@@ -31,17 +31,17 @@ const WallFeed = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 rtl">
+    <div className="flex flex-col h-full bg-slate-50 ltr">
       {/* Search Header - Compact */}
       <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
-            placeholder="بحث في الحائط .." 
-            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pr-7 rounded-md text-[10px]"
+            placeholder="Search wall .." 
+            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pl-7 rounded-md text-[10px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Search className="absolute right-2 top-2 text-white/50" size={12} />
+          <Search className="absolute left-2 top-2 text-white/50" size={12} />
         </div>
         <button className="bg-red-500 text-white p-1 rounded-md hover:bg-red-600 transition-colors">
           <X size={14} />
@@ -58,7 +58,7 @@ const WallFeed = () => {
                 <AvatarFallback>أنا</AvatarFallback>
               </Avatar>
               <div className="flex-1 bg-slate-100 rounded-lg px-3 py-2 text-slate-500 text-[11px] flex items-center cursor-pointer hover:bg-slate-200 transition-colors font-medium">
-                بماذا تفكر يا بطل؟
+                What's on your mind?
               </div>
             </div>
             <div className="flex items-center justify-between border-t pt-2">

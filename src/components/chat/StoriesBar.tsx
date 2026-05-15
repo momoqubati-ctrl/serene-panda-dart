@@ -15,7 +15,7 @@ const MOCK_STORIES = [
 
 const StoriesBar = () => {
   return (
-    <div className="bg-white border-b border-slate-100 py-3 px-2 overflow-x-auto flex gap-3 no-scrollbar shrink-0">
+    <div className="bg-white border-b border-slate-100 py-3 px-2 overflow-x-auto flex gap-3 no-scrollbar shrink-0 ltr">
       {/* Add Story */}
       <div className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group">
         <div className="relative">
@@ -27,7 +27,7 @@ const StoriesBar = () => {
             <Plus size={10} strokeWidth={4} />
           </div>
         </div>
-        <span className="text-[9px] font-bold text-slate-400">قصتك</span>
+        <span className="text-[9px] font-bold text-slate-400">Story</span>
       </div>
 
       {/* Friends Stories */}

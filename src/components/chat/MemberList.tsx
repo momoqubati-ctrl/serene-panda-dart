@@ -26,7 +26,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col h-full bg-white rtl">
+    <div className="flex flex-col h-full bg-white ltr">
       {/* Stories Bar at the very top */}
       <StoriesBar />
 
@@ -35,13 +35,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         <div className="p-3 bg-[#2c3e50] flex items-center gap-2 animate-in slide-in-from-top duration-200">
           <div className="flex-1 relative">
             <Input 
-              placeholder="البحث .." 
-              className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
+              placeholder="Search .." 
+              className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pl-8 rounded-md text-xs"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoFocus
             />
-            <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+            <Search className="absolute left-2 top-2.5 text-white/50" size={14} />
           </div>
           <button 
             onClick={() => setIsSearchOpen?.(false)}
