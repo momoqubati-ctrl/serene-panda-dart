@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Shield, Crown, Star, Gift, MapPin, Users, Search, X } from 'lucide-react';
 import ProfileModal from './ProfileModal';
 import { Input } from "@/components/ui/input";
+import StoriesBar from './StoriesBar';
 
 const MOCK_MEMBERS = [
   { id: 1, name: 'مستر سهم', role: 'admin', rank: 100, color: 'text-green-600', bg: 'bg-green-50', status: 'online', room: 'الغرفة العامة', country: 'SA', points: 5000, rep: 120, avatar: 'https://i.pravatar.cc/150?u=1', siteBadge: 'مالك الموقع', statusMsg: 'لست نصا يمكن ازالته انا الفكرة' },
@@ -21,6 +22,9 @@ const MemberList = () => {
 
   return (
     <div className="flex flex-col h-full bg-white rtl">
+      {/* Stories Bar at the very top */}
+      <StoriesBar />
+
       {/* Search Header */}
       <div className="p-3 bg-[#2c3e50] flex items-center gap-2">
         <div className="flex-1 relative">
