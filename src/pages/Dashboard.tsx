@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Users,
   MessageSquare,
@@ -14,19 +14,12 @@ import {
   X,
   ShieldCheck,
   Menu,
-  ChevronLeft,
   Search,
-  Plus,
-  Mic2,
-  Heart,
-  Crown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-/* ── Sub Components ─────────────────────────────────────────── */
 import MemberList from "@/components/chat/MemberList";
 import RoomList from "@/components/chat/RoomList";
 import WallFeed from "@/components/chat/WallFeed";
@@ -39,13 +32,13 @@ import AdminCP from "@/components/admin/AdminCP";
 import RoomPage from "@/components/chat/RoomPage";
 
 const TABS = [
-  { id: "members", icon: Users, label: "المتواجدين", badge: "1155" },
-  { id: "private", icon: MessageSquare, label: "الخاصة", badge: "3" },
-  { id: "rooms", icon: Home, label: "الغرف", badge: "6" },
-  { id: "wall", icon: LayoutGrid, label: "الحائط", badge: "12" },
-  { id: "stories", icon: LucideImage, label: "القصص", badge: "5" },
+  { id: "members", icon: Users, label: "المتواجدون", badge: "" },
+  { id: "private", icon: MessageSquare, label: "الخاص", badge: "" },
+  { id: "rooms", icon: Home, label: "الغرف", badge: "" },
+  { id: "wall", icon: LayoutGrid, label: "الحائط", badge: "" },
+  { id: "stories", icon: LucideImage, label: "القصص", badge: "" },
   { id: "bots", icon: Bot, label: "البوتات", badge: "" },
-  { id: "mail", icon: Mail, label: "البريد", badge: "2" },
+  { id: "mail", icon: Mail, label: "البريد", badge: "" },
   { id: "settings", icon: Settings, label: "الإعدادات", badge: "" },
   { id: "admin", icon: ShieldCheck, label: "لوحة التحكم", badge: "" },
 ];
@@ -54,33 +47,44 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [activeRoom, setActiveRoom] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(5847);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineCount((prev) => prev + Math.floor(Math.random() * 5) - 2);
-    }, 5000);
-    return () => clearInterval(interval);
+  const currentUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }, []);
 
   const renderSidebarContent = useCallback(() => {
     switch (activeTab) {
-      case "members": return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
-      case "rooms": return <RoomList onSelectRoom={(r: any) => { setActiveRoom(r); setSidebarOpen(false); }} />;
-      case "private": return <PrivateList />;
-      case "wall": return <WallFeed />;
-      case "settings": return <SettingsPanel />;
-      case "bots": return <BotsList />;
-      case "notifications": return <NotificationCenter />;
-      case "stories": return <StoriesViewer />;
-      case "admin": return <AdminCP />;
-      default: return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
+      case "members":
+        return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
+      case "rooms":
+        return <RoomList onSelectRoom={(room: any) => { setActiveRoom(room); setSidebarOpen(false); }} />;
+      case "private":
+        return <PrivateList />;
+      case "wall":
+        return <WallFeed />;
+      case "settings":
+        return <SettingsPanel />;
+      case "bots":
+        return <BotsList />;
+      case "notifications":
+        return <NotificationCenter />;
+      case "stories":
+        return <StoriesViewer />;
+      case "admin":
+        return <AdminCP />;
+      default:
+        return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
     }
   }, [activeTab, isSearchOpen]);
 
   const getSidebarTitle = useCallback(() => {
-    const tab = TABS.find((t) => t.id === activeTab);
+    const tab = TABS.find((item) => item.id === activeTab);
     return tab ? tab.label : "";
   }, [activeTab]);
 
@@ -90,29 +94,25 @@ const Dashboard = () => {
   };
 
   const bottomNavTabs = ["members", "private", "rooms", "wall", "stories", "settings"];
-  const sidebarNavTabs = TABS;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
-      {/* Mobile Sidebar Sheet */}
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 font-sans text-slate-900 rtl">
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen} modal={false}>
-        <SheetContent 
-          side="right" 
-          className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0 shadow-2xl"
-        >
-          <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <SheetContent side="right" className="bottom-16 top-0 flex h-[calc(100%-64px)] w-[320px] flex-col border-l border-slate-200 bg-white p-0 shadow-2xl rtl">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-3 py-1.5">
             <div className="flex items-center gap-2">
-              <h2 className="font-black text-[11px] text-slate-800">{getSidebarTitle()}</h2>
+              <h2 className="text-[11px] font-black text-slate-800">{getSidebarTitle()}</h2>
               {activeTab === "members" && (
-                <button 
+                <button
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
+                  className={`rounded-md p-1 transition-colors ${isSearchOpen ? "bg-primary/10 text-primary" : "text-slate-400 hover:bg-slate-100"}`}
+                  type="button"
                 >
                   <Search size={14} />
                 </button>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="rounded-lg h-7 w-7">
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-7 w-7 rounded-lg">
               <X size={16} />
             </Button>
           </div>
@@ -120,27 +120,26 @@ const Dashboard = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Top Bar */}
-      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-20 shadow-sm">
+      <header className="z-20 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="lg:hidden rounded-xl bg-slate-50" onClick={() => setSidebarOpen(true)}>
+          <Button variant="ghost" size="icon" className="rounded-xl bg-slate-50 lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu size={20} />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white text-sm font-black">د</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20">
+              <span className="text-sm font-black text-white">د</span>
             </div>
             <div className="hidden sm:block">
               <h1 className="text-sm font-black text-slate-800">دردشة دياد</h1>
-              <p className="text-[9px] text-slate-400 font-bold">المجتمع العربي الأول</p>
+              <p className="text-[9px] font-bold text-slate-400">مجتمع عربي مباشر وسريع</p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="bg-green-50 text-green-600 rounded-xl px-3 py-1.5 flex items-center gap-2 border border-green-100">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black">{onlineCount.toLocaleString('ar-SA')} متصل</span>
+          <div className="flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 px-3 py-1.5 text-green-600">
+            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="text-[10px] font-black">{currentUser?.name || "زائر"}</span>
           </div>
           <Button variant="ghost" size="icon" className="rounded-xl bg-slate-50 text-slate-500" onClick={() => handleTabClick("notifications")}>
             <Bell size={18} />
@@ -148,32 +147,30 @@ const Dashboard = () => {
         </div>
       </header>
 
-      {/* Main Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:flex w-80 bg-white border-l border-slate-200 flex-col shadow-sm z-10">
-          <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="z-10 hidden w-80 flex-col border-l border-slate-200 bg-white shadow-sm lg:flex">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-3 py-1.5">
             <div className="flex items-center gap-2">
-              <h2 className="font-black text-[11px] text-slate-800">{getSidebarTitle()}</h2>
+              <h2 className="text-[11px] font-black text-slate-800">{getSidebarTitle()}</h2>
               {activeTab === "members" && (
-                <button 
+                <button
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
+                  className={`rounded-md p-1 transition-colors ${isSearchOpen ? "bg-primary/10 text-primary" : "text-slate-400 hover:bg-slate-100"}`}
+                  type="button"
                 >
                   <Search size={14} />
                 </button>
               )}
             </div>
-            <Badge variant="secondary" className="text-[9px] bg-green-50 text-green-600 border-green-100 h-4 px-1">نشط الآن</Badge>
-          </div>
-          
-          <div className="flex-1 overflow-hidden">
-            {renderSidebarContent()}
+            <Badge variant="secondary" className="h-4 border-green-100 bg-green-50 px-1 text-[9px] text-green-600">
+              مباشر
+            </Badge>
           </div>
 
-          {/* Desktop Sidebar Bottom Navigation */}
-          <div className="p-2 border-t border-slate-100 bg-slate-50/50 grid grid-cols-5 gap-1">
-            {sidebarNavTabs.map((tab) => {
+          <div className="flex-1 overflow-hidden">{renderSidebarContent()}</div>
+
+          <div className="grid grid-cols-5 gap-1 border-t border-slate-100 bg-slate-50/50 p-2">
+            {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               const IconComponent = tab.icon;
               return (
@@ -181,16 +178,12 @@ const Dashboard = () => {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all relative ${
+                      className={`relative flex flex-col items-center justify-center rounded-xl p-2 transition-all ${
                         isActive ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-400 hover:bg-white hover:text-slate-600"
                       }`}
+                      type="button"
                     >
                       <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
-                      {tab.badge && !isActive && (
-                        <span className="absolute top-1 left-1 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full min-w-[12px] text-center">
-                          {tab.badge}
-                        </span>
-                      )}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="text-[10px] font-bold">
@@ -202,34 +195,36 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col bg-slate-100/50 relative overflow-hidden">
+        <div className="relative flex flex-1 flex-col overflow-hidden bg-slate-100/50">
           {activeRoom ? (
-            <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} isEmbedded={true} />
+            <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} isEmbedded />
           ) : (
-            <div className="flex-1 flex items-center justify-center flex-col gap-6 p-8 text-center">
-              <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl border border-slate-100">
+            <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+              <div className="flex h-32 w-32 items-center justify-center rounded-full border border-slate-100 bg-white shadow-xl">
                 <Home size={64} strokeWidth={1} className="text-primary/20" />
               </div>
               <div className="max-w-sm space-y-2">
                 <h2 className="text-2xl font-black text-slate-800">مرحباً بك في دياد</h2>
-                <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                  اختر غرفة من قائمة الغرف للبدء في الدردشة المباشرة، أو تصفح الحائط لمشاهدة آخر المنشورات.
+                <p className="text-sm font-medium leading-relaxed text-slate-500">
+                  اختر غرفة من القائمة لبدء الدردشة المباشرة، أو افتح الحائط لمشاهدة آخر المنشورات.
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                <Button onClick={() => handleTabClick("rooms")} className="font-bold rounded-xl h-11 shadow-lg shadow-primary/20">استعراض الغرف</Button>
-                <Button onClick={() => handleTabClick("wall")} variant="outline" className="bg-white border-slate-200 font-bold rounded-xl h-11">الحائط العام</Button>
+              <div className="grid w-full max-w-xs grid-cols-2 gap-3">
+                <Button onClick={() => handleTabClick("rooms")} className="h-11 rounded-xl font-bold shadow-lg shadow-primary/20">
+                  استعراض الغرف
+                </Button>
+                <Button onClick={() => handleTabClick("wall")} variant="outline" className="h-11 rounded-xl border-slate-200 bg-white font-bold">
+                  الحائط العام
+                </Button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden h-16 bg-white border-t border-slate-200 flex justify-around items-center py-2 px-2 z-30 shadow-lg">
+      <nav className="z-30 flex h-16 items-center justify-around border-t border-slate-200 bg-white px-2 py-2 shadow-lg lg:hidden">
         {bottomNavTabs.map((tabId) => {
-          const tab = TABS.find((t) => t.id === tabId);
+          const tab = TABS.find((item) => item.id === tabId);
           if (!tab) return null;
           const isActive = activeTab === tabId;
           const IconComponent = tab.icon;
@@ -237,9 +232,10 @@ const Dashboard = () => {
             <button
               key={tabId}
               onClick={() => handleTabClick(tabId)}
-              className={`flex flex-col items-center justify-center gap-1 px-2 py-1 rounded-xl transition-all ${isActive ? "text-primary" : "text-slate-400"}`}
+              className={`flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 transition-all ${isActive ? "text-primary" : "text-slate-400"}`}
+              type="button"
             >
-              <div className={`p-2 rounded-xl transition-all ${isActive ? "bg-primary/10 scale-110" : "hover:bg-slate-50"}`}>
+              <div className={`rounded-xl p-2 transition-all ${isActive ? "scale-110 bg-primary/10" : "hover:bg-slate-50"}`}>
                 <IconComponent size={20} strokeWidth={isActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[9px] font-black">{tab.label}</span>

@@ -1,56 +1,122 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Card } from "@/components/ui/card";
-import { Users, Lock, Mic2, Heart, Crown, Search, Plus } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useMemo, useState } from "react";
+import { Users, Lock, Mic2, Heart, Search, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-const MOCK_ROOMS = [
-  { id: 1, name: 'الغرفة العامة', desc: 'أهلاً بكم في الغرفة العامة للجميع', members: 1245, mics: 5, likes: 1000, locked: false, owner: 'مستر سهم', image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop' },
-  { id: 2, name: 'غرفة المسابقات', desc: 'جوائز يومية ومسابقات ثقافية', members: 120, mics: 3, likes: 500, locked: true, owner: 'المشرف الذهبي', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop' },
-  { id: 3, name: 'عالم الرومانسية', desc: 'أجمل الأغاني والقصائد', members: 85, mics: 8, likes: 2500, locked: false, owner: 'ليلى', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop' },
-];
+type Room = {
+  id: string;
+  name: string;
+  description: string;
+  members: number;
+  mics: number;
+  likes: number;
+  locked: boolean;
+  owner: string;
+  image: string;
+};
 
-const RoomList = ({ onSelectRoom }: any) => {
-  const [searchQuery, setSearchQuery] = useState('');
+const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadRooms = async () => {
+      try {
+        setError("");
+        const response = await fetch("/api/rooms");
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "تعذر تحميل الغرف");
+        }
+
+        if (!ignore) {
+          setRooms(data.rooms);
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "تعذر تحميل الغرف");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadRooms();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const filteredRooms = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return rooms;
+    return rooms.filter((room) => `${room.name} ${room.description} ${room.owner}`.toLowerCase().includes(query));
+  }, [rooms, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full bg-white [direction:ltr]">
-      {/* Search Header */}
-      <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
-        <div className="flex-1 relative">
-          <Input 
-            placeholder="Search room .." 
-            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pl-7 rounded-md text-[10px]"
+    <div className="flex h-full flex-col bg-white [direction:ltr]">
+      <div className="flex items-center gap-1.5 bg-[#2c3e50] p-1.5">
+        <div className="relative flex-1">
+          <Input
+            placeholder="ابحث عن غرفة"
+            className="h-7 rounded-md border-none bg-white/10 pl-7 text-[10px] text-white placeholder:text-white/60"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Search className="absolute left-2 top-2 text-white/50" size={12} />
         </div>
-        <button className="bg-green-500 text-white p-1 rounded-md hover:bg-green-600 transition-colors">
+        <button className="rounded-md bg-green-500 p-1 text-white transition-colors hover:bg-green-600" type="button">
           <Plus size={14} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
-        {MOCK_ROOMS.map((room) => (
-          <div 
-            key={room.id} 
+      <div className="flex-1 space-y-2 overflow-y-auto p-2">
+        {isLoading && (
+          <div className="flex h-24 items-center justify-center text-slate-400">
+            <Loader2 className="animate-spin" size={18} />
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-center text-xs font-bold text-red-600" dir="rtl">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && filteredRooms.length === 0 && (
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-center text-xs font-bold text-slate-500" dir="rtl">
+            لا توجد غرف مطابقة
+          </div>
+        )}
+
+        {filteredRooms.map((room) => (
+          <button
+            key={room.id}
             onClick={() => onSelectRoom(room)}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 group [direction:ltr]"
+            className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border-b border-slate-50 p-2 text-left transition-all hover:bg-slate-100 [direction:ltr]"
+            type="button"
           >
             <div className="relative shrink-0">
-              <img src={room.image} alt={room.name} className="w-12 h-12 object-cover rounded-lg shadow-sm" />
+              <img src={room.image} alt={room.name} className="h-12 w-12 rounded-lg object-cover shadow-sm" />
               {room.locked && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-lg">
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
                   <Lock className="text-white" size={12} />
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="flex items-center justify-between mb-0.5">
-                <h4 className="font-black text-xs text-slate-800 truncate" style={{ direction: 'rtl' }}>{room.name}</h4>
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex items-center justify-between">
+                <h4 className="truncate text-xs font-black text-slate-800" dir="rtl">
+                  {room.name}
+                </h4>
                 <div className="flex items-center gap-1 text-pink-500">
                   <Heart size={10} fill="currentColor" />
                   <span className="text-[9px] font-bold">{room.likes}</span>
@@ -67,12 +133,12 @@ const RoomList = ({ onSelectRoom }: any) => {
                     <span className="text-[9px] font-bold">{room.mics}</span>
                   </div>
                 </div>
-                <span className="text-[9px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-sm" style={{ direction: 'rtl' }}>
+                <span className="rounded-sm bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold text-primary" dir="rtl">
                   {room.owner}
                 </span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

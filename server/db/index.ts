@@ -8,3 +8,18 @@ const pool = new Pool({
 });
 
 export const db = drizzle(pool, { schema });
+
+export const checkDatabaseConnection = async () => {
+  try {
+    await pool.query("select 1");
+    return {
+      connected: true,
+      message: "قاعدة البيانات متصلة",
+    };
+  } catch {
+    return {
+      connected: false,
+      message: "قاعدة البيانات غير متصلة",
+    };
+  }
+};

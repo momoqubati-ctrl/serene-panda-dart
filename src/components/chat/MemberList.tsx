@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Shield, Crown, Star, Gift, MapPin, Users, Search, X } from 'lucide-react';
 import ProfileModal from './ProfileModal';
 import { Input } from "@/components/ui/input";
 import StoriesBar from './StoriesBar';
+import { getCountryFlagSrc, normalizeCountryCode } from "@/lib/countries";
 
 interface MemberListProps {
   isSearchOpen?: boolean;
@@ -21,9 +22,72 @@ const MOCK_MEMBERS = [
   { id: 5, name: 'صادق 1006', role: 'member', rank: 0, color: 'text-slate-700', bg: 'bg-slate-50', status: 'online', room: 'الغرفة العامة', country: 'DZ', points: 0, rep: 0, avatar: 'https://i.pravatar.cc/150?u=1006', statusMsg: 'مرحبا بكم' },
 ];
 
+const getCurrentMember = () => {
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    const user = JSON.parse(raw);
+    const name = typeof user.name === "string" && user.name.trim() ? user.name : "زائر";
+    const role = user.role === "admin" ? "admin" : user.role === "guest" ? "guest" : "member";
+    const profileMsg =
+      typeof user.profileMsg === "string" && user.profileMsg.trim()
+        ? user.profileMsg
+        : role === "guest"
+          ? "( غير مسجل )"
+          : "(عضو جديد)";
+
+    return {
+      id: 0,
+      idreg: typeof user.idreg === "string" && user.idreg.trim() ? user.idreg : role === "guest" ? "#300" : "#101",
+      name,
+      role,
+      rank: role === "admin" ? 100 : 0,
+      color: role === "admin" ? "text-red-600" : "text-slate-700",
+      bg: "bg-blue-50",
+      status: "online",
+      room: "الغرفة العامة",
+      country: normalizeCountryCode(user.countryCode),
+      points: Number(user.evaluation) || 0,
+      rep: Number(user.rep) || 0,
+      coins: Number(user.coins) || 0,
+      giftsReceivedCount: Number(user.giftsReceivedCount) || 0,
+      avatar: typeof user.avatar === "string" && user.avatar.trim() ? user.avatar : "/pic.png",
+      profileCover:
+        typeof user.profileBannerUrl === "string" && user.profileBannerUrl.trim()
+          ? user.profileBannerUrl
+          : typeof user.profileCover === "string" && user.profileCover.trim()
+            ? user.profileCover
+            : "/pich.png",
+      profileThemeId: typeof user.profileThemeId === "string" ? user.profileThemeId : "",
+      avatarFrameUrl: typeof user.avatarFrameUrl === "string" ? user.avatarFrameUrl : "",
+      giftIconUrl:
+        typeof user.giftIconUrl === "string" && user.giftIconUrl.trim()
+          ? user.giftIconUrl
+          : typeof user.giftIcon === "string"
+            ? user.giftIcon
+            : "",
+      profileIconUrl: typeof user.profileIconUrl === "string" ? user.profileIconUrl : "",
+      nameGradient: typeof user.nameGradient === "string" ? user.nameGradient : "",
+      nameEffectId: typeof user.nameEffectId === "string" ? user.nameEffectId : "",
+      messageBubbleStyle: typeof user.messageBubbleStyle === "string" ? user.messageBubbleStyle : "default",
+      profileAccentColor: typeof user.profileAccentColor === "string" ? user.profileAccentColor : "#2563EB",
+      power: typeof user.power === "string" ? user.power : "",
+      siteBadge: typeof user.siteBadge === "string" && user.siteBadge.trim() ? user.siteBadge : role === "admin" ? "مالك الموقع" : "",
+      statusMsg: profileMsg,
+      isLogin: typeof user.isLogin === "string" ? user.isLogin : role === "guest" ? "زائر" : "عضو",
+    };
+  } catch {
+    return null;
+  }
+};
+
 const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const members = useMemo(() => {
+    const currentMember = getCurrentMember();
+    return currentMember ? [currentMember, ...MOCK_MEMBERS] : MOCK_MEMBERS;
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -54,17 +118,22 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
       {/* Members List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {MOCK_MEMBERS.filter(m => m.name.includes(searchQuery)).map((member) => (
+        {members.filter(m => m.name.includes(searchQuery)).map((member) => (
           <div 
             key={member.id} 
             onClick={() => setSelectedUser(member)}
             className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 [direction:ltr]"
           >
             <div className="relative shrink-0">
-              <Avatar className="w-12 h-12 rounded-full border-2 border-white shadow-sm">
-                <AvatarImage src={member.avatar} />
-                <AvatarFallback>{member.name[0]}</AvatarFallback>
-              </Avatar>
+              <div
+                className="relative grid h-12 w-12 place-items-center rounded-full"
+                style={member.avatarFrameUrl ? { backgroundImage: `url(${member.avatarFrameUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+              >
+                <Avatar className="w-12 h-12 rounded-full border-2 border-white shadow-sm">
+                  <AvatarImage src={member.avatar} />
+                  <AvatarFallback>{member.name[0]}</AvatarFallback>
+                </Avatar>
+              </div>
               <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${member.status === 'online' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
             </div>
 
@@ -77,10 +146,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
                       {member.siteBadge}
                     </Badge>
                   )}
+                  {member.giftIconUrl && (
+                    <img src={member.giftIconUrl} alt="gift" className="h-4 w-4 rounded object-cover" />
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
-                   <img src={`https://flagcdn.com/w20/${member.country.toLowerCase()}.png`} alt={member.country} className="w-4 h-3 object-cover rounded-sm" />
-                   <span className="text-[9px] text-slate-400 font-bold">#{member.id + 300}</span>
+                   <img src={getCountryFlagSrc(member.country)} alt={member.country} className="h-3 w-4 rounded-sm object-cover" />
+                   <span className="text-[9px] text-slate-400 font-bold">{member.idreg || `#${member.id + 300}`}</span>
                 </div>
               </div>
               

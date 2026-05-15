@@ -1,52 +1,40 @@
-import { defineEventHandler, readBody } from "h3";
-import { db } from "~/server/db";
+import { defineEventHandler, readBody, setResponseStatus } from "h3";
+import { loginMember } from "../../services/authService";
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event);
     const { username, password } = body;
 
-    // Simple validation
-    if (!username || !password) {
+    if (typeof username !== "string" || typeof password !== "string" || !username.trim() || !password.trim()) {
+      setResponseStatus(event, 400);
       return {
         success: false,
+        code: "INVALID_LOGIN_INPUT",
         message: "اسم المستخدم وكلمة المرور مطلوبان",
       };
     }
 
-    // Check if user exists
-    const user = await db.user.findUnique({
-      where: { username },
-    });
-
-    if (!user) {
+    const result = await loginMember({ username, password });
+    if (!result.ok) {
+      setResponseStatus(event, 401);
       return {
         success: false,
-        message: "اسم المستخدم غير صحيح",
+        code: result.code,
+        message: result.message,
       };
     }
-
-    // In a real app, you would compare hashed passwords
-    // For now, we'll do a simple comparison (NOT SECURE - for demo only)
-    if (user.password !== password) {
-      return {
-        success: false,
-        message: "كلمة المرور غير صحيحة",
-      };
-    }
-
-    // Return user data (excluding password)
-    const { password: _, ...userWithoutPassword } = user;
 
     return {
       success: true,
-      message: "تم تسجيل الدخول بنجاح",
-      user: userWithoutPassword,
+      ...result.session,
     };
   } catch (error) {
     console.error("Login error:", error);
+    setResponseStatus(event, 500);
     return {
       success: false,
+      code: "LOGIN_FAILED",
       message: "حدث خطأ أثناء تسجيل الدخول",
     };
   }
