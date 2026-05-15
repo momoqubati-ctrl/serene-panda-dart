@@ -58,7 +58,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           <div 
             key={member.id} 
             onClick={() => setSelectedUser(member)}
-            className={`flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 ltr`}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50"
+            style={{ direction: 'ltr' }}
           >
             <div className="relative shrink-0">
               <Avatar className="w-12 h-12 rounded-full border-2 border-white shadow-sm">
@@ -68,12 +69,12 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
               <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${member.status === 'online' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center justify-between mb-0.5">
                 <div className="flex items-center gap-1.5">
-                  <span className={`font-black text-xs truncate ${member.color}`}>{member.name}</span>
+                  <span className={`font-black text-xs truncate ${member.color}`} style={{ direction: 'rtl' }}>{member.name}</span>
                   {member.siteBadge && (
-                    <Badge className="h-3.5 text-[8px] px-1 bg-blue-600 text-white border-none rounded-sm">
+                    <Badge className="h-3.5 text-[8px] px-1 bg-blue-600 text-white border-none rounded-sm font-black">
                       {member.siteBadge}
                     </Badge>
                   )}
@@ -85,7 +86,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
               </div>
               
               <div className="flex items-center justify-between">
-                <p className="text-[10px] text-slate-500 truncate font-medium">{member.statusMsg}</p>
+                <p className="text-[10px] text-slate-500 truncate font-medium" style={{ direction: 'rtl' }}>{member.statusMsg}</p>
                 <div className="flex items-center gap-1 text-[9px] text-slate-400 font-bold">
                   <span>@{member.name.replace(' ', '')}</span>
                 </div>
