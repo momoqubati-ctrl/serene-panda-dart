@@ -35,15 +35,18 @@ const AdminCP = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {stats.map((stat, i) => (
-          <Card key={i} className="bg-white/5 border-white/10 shadow-none rounded-2xl">
-            <CardContent className="p-3">
-              <stat.icon className={`${stat.color} mb-2`} size={18} />
-              <div className="text-lg font-black text-white">{stat.value}</div>
-              <div className="text-[9px] font-bold text-slate-500 uppercase">{stat.label}</div>
-            </CardContent>
-          </Card>
-        ))}
+        {stats.map((stat, i) => {
+          const IconComponent = stat.icon;
+          return (
+            <Card key={i} className="bg-white/5 border-white/10 shadow-none rounded-2xl">
+              <CardContent className="p-3">
+                <IconComponent className={`${stat.color} mb-2`} size={18} />
+                <div className="text-lg font-black text-white">{stat.value}</div>
+                <div className="text-[9px] font-bold text-slate-500 uppercase">{stat.label}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="space-y-2">
@@ -57,7 +60,7 @@ const AdminCP = () => {
   );
 };
 
-const AdminAction = ({ icon, label }: any) => (
+const AdminAction = ({ icon, label }: { icon: React.ReactNode; label: string }) => (
   <button className="w-full flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-colors group border border-white/5">
     <div className="flex items-center gap-3">
       <div className="text-slate-400 group-hover:text-white transition-colors">
