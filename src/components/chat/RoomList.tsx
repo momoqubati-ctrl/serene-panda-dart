@@ -17,19 +17,19 @@ const RoomList = ({ onSelectRoom }: any) => {
 
   return (
     <div className="flex flex-col h-full bg-white rtl">
-      {/* Search Header */}
-      <div className="p-3 bg-[#2c3e50] flex items-center gap-2">
+      {/* Search Header - Compact */}
+      <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
             placeholder="بحث عن غرفة .." 
-            className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
+            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pr-7 rounded-md text-[10px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+          <Search className="absolute right-2 top-2 text-white/50" size={12} />
         </div>
-        <button className="bg-green-500 text-white p-1.5 rounded-md hover:bg-green-600 transition-colors">
-          <Plus size={16} />
+        <button className="bg-green-500 text-white p-1 rounded-md hover:bg-green-600 transition-colors">
+          <Plus size={14} />
         </button>
       </div>
 

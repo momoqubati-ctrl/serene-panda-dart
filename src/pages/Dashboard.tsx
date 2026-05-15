@@ -100,20 +100,20 @@ const Dashboard = () => {
           side="right" 
           className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl h-[calc(100%-64px)] bottom-16 top-0 shadow-2xl"
         >
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
-              <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+              <h2 className="font-black text-[11px] text-slate-800">{getSidebarTitle()}</h2>
               {activeTab === "members" && (
                 <button 
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
                 >
-                  <Search size={16} />
+                  <Search size={14} />
                 </button>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="rounded-xl">
-              <X size={20} />
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="rounded-lg h-7 w-7">
+              <X size={16} />
             </Button>
           </div>
           <div className="flex-1 overflow-hidden">{renderSidebarContent()}</div>
@@ -152,19 +152,19 @@ const Dashboard = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex w-80 bg-white border-l border-slate-200 flex-col shadow-sm z-10">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="py-1.5 px-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-2">
-              <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+              <h2 className="font-black text-[11px] text-slate-800">{getSidebarTitle()}</h2>
               {activeTab === "members" && (
                 <button 
                   onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
                 >
-                  <Search size={16} />
+                  <Search size={14} />
                 </button>
               )}
             </div>
-            <Badge variant="secondary" className="text-[10px] bg-green-50 text-green-600 border-green-100">نشط الآن</Badge>
+            <Badge variant="secondary" className="text-[9px] bg-green-50 text-green-600 border-green-100 h-4 px-1">نشط الآن</Badge>
           </div>
           
           <div className="flex-1 overflow-hidden">

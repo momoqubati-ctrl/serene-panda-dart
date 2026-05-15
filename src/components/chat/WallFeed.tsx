@@ -32,19 +32,19 @@ const WallFeed = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 rtl">
-      {/* Search Header */}
-      <div className="p-3 bg-[#2c3e50] flex items-center gap-2">
+      {/* Search Header - Compact */}
+      <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
             placeholder="بحث في الحائط .." 
-            className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
+            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pr-7 rounded-md text-[10px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+          <Search className="absolute right-2 top-2 text-white/50" size={12} />
         </div>
-        <button className="bg-red-500 text-white p-1.5 rounded-md hover:bg-red-600 transition-colors">
-          <X size={16} />
+        <button className="bg-red-500 text-white p-1 rounded-md hover:bg-red-600 transition-colors">
+          <X size={14} />
         </button>
       </div>
 
