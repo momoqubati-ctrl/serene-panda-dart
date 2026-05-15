@@ -8,6 +8,11 @@ import ProfileModal from './ProfileModal';
 import { Input } from "@/components/ui/input";
 import StoriesBar from './StoriesBar';
 
+interface MemberListProps {
+  isSearchOpen?: boolean;
+  setIsSearchOpen?: (open: boolean) => void;
+}
+
 const MOCK_MEMBERS = [
   { id: 1, name: 'مستر سهم', role: 'admin', rank: 100, color: 'text-green-600', bg: 'bg-green-50', status: 'online', room: 'الغرفة العامة', country: 'SA', points: 5000, rep: 120, avatar: 'https://i.pravatar.cc/150?u=1', siteBadge: 'مالك الموقع', statusMsg: 'لست نصا يمكن ازالته انا الفكرة' },
   { id: 2, name: 'صادق 10', role: 'member', rank: 80, color: 'text-slate-700', bg: 'bg-slate-50', status: 'online', room: 'الغرفة العامة', country: 'EG', points: 3500, rep: 85, avatar: 'https://i.pravatar.cc/150?u=10', statusMsg: 'مرحبا بكم' },
@@ -16,7 +21,7 @@ const MOCK_MEMBERS = [
   { id: 5, name: 'صادق 1006', role: 'member', rank: 0, color: 'text-slate-700', bg: 'bg-slate-50', status: 'online', room: 'الغرفة العامة', country: 'DZ', points: 0, rep: 0, avatar: 'https://i.pravatar.cc/150?u=1006', statusMsg: 'مرحبا بكم' },
 ];
 
-const MemberList = () => {
+const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,25 +30,31 @@ const MemberList = () => {
       {/* Stories Bar at the very top */}
       <StoriesBar />
 
-      {/* Search Header */}
-      <div className="p-3 bg-[#2c3e50] flex items-center gap-2">
-        <div className="flex-1 relative">
-          <Input 
-            placeholder="البحث .." 
-            className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+      {/* Search Header - Conditionally Rendered */}
+      {isSearchOpen && (
+        <div className="p-3 bg-[#2c3e50] flex items-center gap-2 animate-in slide-in-from-top duration-200">
+          <div className="flex-1 relative">
+            <Input 
+              placeholder="البحث .." 
+              className="h-9 bg-white/10 border-none text-white placeholder:text-white/50 pr-8 rounded-md text-xs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <Search className="absolute right-2 top-2.5 text-white/50" size={14} />
+          </div>
+          <button 
+            onClick={() => setIsSearchOpen?.(false)}
+            className="bg-red-500 text-white p-1.5 rounded-md hover:bg-red-600 transition-colors"
+          >
+            <X size={16} />
+          </button>
         </div>
-        <button className="bg-red-500 text-white p-1.5 rounded-md hover:bg-red-600 transition-colors">
-          <X size={16} />
-        </button>
-      </div>
+      )}
 
       {/* Members List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {MOCK_MEMBERS.map((member) => (
+        {MOCK_MEMBERS.filter(m => m.name.includes(searchQuery)).map((member) => (
           <div 
             key={member.id} 
             onClick={() => setSelectedUser(member)}

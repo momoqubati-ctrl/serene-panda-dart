@@ -55,6 +55,7 @@ const Dashboard = () => {
   const [activeRoom, setActiveRoom] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [onlineCount, setOnlineCount] = useState(5847);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -65,7 +66,7 @@ const Dashboard = () => {
 
   const renderSidebarContent = useCallback(() => {
     switch (activeTab) {
-      case "members": return <MemberList />;
+      case "members": return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
       case "rooms": return <RoomList onSelectRoom={(r: any) => { setActiveRoom(r); setSidebarOpen(false); }} />;
       case "private": return <PrivateList />;
       case "wall": return <WallFeed />;
@@ -74,9 +75,9 @@ const Dashboard = () => {
       case "notifications": return <NotificationCenter />;
       case "stories": return <StoriesViewer />;
       case "admin": return <AdminCP />;
-      default: return <MemberList />;
+      default: return <MemberList isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />;
     }
-  }, [activeTab]);
+  }, [activeTab, isSearchOpen]);
 
   const getSidebarTitle = useCallback(() => {
     const tab = TABS.find((t) => t.id === activeTab);
@@ -84,7 +85,7 @@ const Dashboard = () => {
   }, [activeTab]);
 
   const bottomNavTabs = ["members", "private", "rooms", "wall", "stories", "settings"];
-  const sidebarNavTabs = TABS; // All tabs for desktop sidebar
+  const sidebarNavTabs = TABS;
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 rtl overflow-hidden font-sans">
@@ -92,7 +93,17 @@ const Dashboard = () => {
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="right" className="w-[320px] bg-white border-l border-slate-200 p-0 flex flex-col rtl">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+              {activeTab === "members" && (
+                <button 
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
+                >
+                  <Search size={16} />
+                </button>
+              )}
+            </div>
             <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="rounded-xl">
               <X size={20} />
             </Button>
@@ -134,7 +145,17 @@ const Dashboard = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:flex w-80 bg-white border-l border-slate-200 flex-col shadow-sm z-10">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-black text-sm text-slate-800">{getSidebarTitle()}</h2>
+              {activeTab === "members" && (
+                <button 
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className={`p-1 rounded-md transition-colors ${isSearchOpen ? 'text-primary bg-primary/10' : 'text-slate-400 hover:bg-slate-100'}`}
+                >
+                  <Search size={16} />
+                </button>
+              )}
+            </div>
             <Badge variant="secondary" className="text-[10px] bg-green-50 text-green-600 border-green-100">نشط الآن</Badge>
           </div>
           
