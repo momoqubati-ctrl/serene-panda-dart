@@ -16,8 +16,8 @@ const RoomList = ({ onSelectRoom }: any) => {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col h-full bg-white ltr">
-      {/* Search Header - Compact */}
+    <div className="flex flex-col h-full bg-white [direction:ltr]">
+      {/* Search Header */}
       <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
@@ -38,7 +38,7 @@ const RoomList = ({ onSelectRoom }: any) => {
           <div 
             key={room.id} 
             onClick={() => onSelectRoom(room)}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 group"
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 transition-all cursor-pointer border-b border-slate-50 group [direction:ltr]"
           >
             <div className="relative shrink-0">
               <img src={room.image} alt={room.name} className="w-12 h-12 object-cover rounded-lg shadow-sm" />
@@ -48,9 +48,9 @@ const RoomList = ({ onSelectRoom }: any) => {
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center justify-between mb-0.5">
-                <h4 className="font-black text-xs text-slate-800 truncate">{room.name}</h4>
+                <h4 className="font-black text-xs text-slate-800 truncate" style={{ direction: 'rtl' }}>{room.name}</h4>
                 <div className="flex items-center gap-1 text-pink-500">
                   <Heart size={10} fill="currentColor" />
                   <span className="text-[9px] font-bold">{room.likes}</span>
@@ -67,7 +67,7 @@ const RoomList = ({ onSelectRoom }: any) => {
                     <span className="text-[9px] font-bold">{room.mics}</span>
                   </div>
                 </div>
-                <span className="text-[9px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-sm">
+                <span className="text-[9px] text-primary font-bold bg-primary/5 px-1.5 py-0.5 rounded-sm" style={{ direction: 'rtl' }}>
                   {room.owner}
                 </span>
               </div>

@@ -15,8 +15,8 @@ const PrivateList = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col h-full bg-white ltr">
-      {/* Search Header - Compact */}
+    <div className="flex flex-col h-full bg-white [direction:ltr]">
+      {/* Search Header */}
       <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
@@ -34,7 +34,7 @@ const PrivateList = () => {
 
       <div className="flex-1 overflow-y-auto">
         {MOCK_CHATS.map((chat) => (
-          <div key={chat.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50">
+          <div key={chat.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 [direction:ltr]">
             <div className="relative shrink-0">
               <Avatar className="w-11 h-11 rounded-full border-2 border-white shadow-sm">
                 <AvatarImage src={chat.avatar} />
@@ -45,13 +45,13 @@ const PrivateList = () => {
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <div className="flex justify-between items-center mb-0.5">
-                <h4 className="font-black text-xs text-slate-800 truncate">{chat.name}</h4>
+                <h4 className="font-black text-xs text-slate-800 truncate" style={{ direction: 'rtl' }}>{chat.name}</h4>
                 <span className="text-[9px] text-slate-400 font-bold">{chat.time}</span>
               </div>
               <div className="flex justify-between items-center">
-                <p className="text-[10px] text-slate-500 truncate flex-1 font-medium">{chat.lastMsg}</p>
+                <p className="text-[10px] text-slate-500 truncate flex-1 font-medium" style={{ direction: 'rtl' }}>{chat.lastMsg}</p>
                 {chat.unread > 0 ? (
                   <span className="bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center">
                     {chat.unread}
