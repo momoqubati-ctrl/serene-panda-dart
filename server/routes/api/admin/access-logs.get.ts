@@ -8,30 +8,33 @@ export default defineEventHandler(async (event) => {
 
     const query = getQuery(event);
     const search = String(query.search || "").trim();
-    const limit = Math.min(Number(query.limit) || 150, 500); // الحد الأقصى الافتراضي 150 كما في النظام القديم
+    const limit = Math.min(Number(query.limit) || 150, 500);
 
     let where = "";
     const params: any[] = [limit];
 
     if (search) {
       params.push(`%${search}%`);
-      where = `WHERE state ILIKE $2 OR topic ILIKE $2 OR username ILIKE $2 OR ip ILIKE $2 OR device ILIKE $2`;
+      where = `WHERE l.state ILIKE $2 OR l.topic ILIKE $2 OR l.username ILIKE $2 OR l.ip ILIKE $2 OR l.device ILIKE $2`;
     }
 
+    // ربط جدول السجلات بجدول المستخدمين لجلب حالة التوثيق (documentationc)
     const result = await dbPool.query(
       `SELECT 
-        id,
-        state,
-        topic,
-        username,
-        ip,
-        code,
-        device,
-        isin,
-        "time" as "createdAt"
-       FROM logs
+        l.id,
+        l.state,
+        l.topic,
+        l.username,
+        l.ip,
+        l.code,
+        l.device,
+        l.isin,
+        l."time" as "createdAt",
+        COALESCE(u.documentationc, 0) as "isVerified"
+       FROM logs l
+       LEFT JOIN users u ON l.username = u.username
        ${where}
-       ORDER BY "time" DESC
+       ORDER BY l."time" DESC
        LIMIT $1`,
       params
     );
