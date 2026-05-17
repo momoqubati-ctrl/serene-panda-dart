@@ -37,6 +37,32 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
   broadcast: "بث عام",
 };
 
+// قاموس ترجمة الصلاحيات
+const PERMISSION_TRANSLATIONS: Record<string, string> = {
+  ban: "حظر الأعضاء",
+  cp: "دخول لوحة التحكم",
+  msgs: "إدارة الرسائل",
+  kick: "طرد الأعضاء",
+  subs: "إدارة الاشتراكات",
+  shrt: "إدارة الاختصارات",
+  delbc: "حذف منشورات الحائط",
+  alert: "إرسال تنبيهات",
+  loveu: "إعطاء إعجابات",
+  flter: "إدارة الفلتر",
+  owner: "صلاحيات المالك",
+  meiut: "كتم الأعضاء",
+  ulike: "إعجابات غير محدودة",
+  rooms: "إدارة الغرف",
+  gift: "إرسال هدايا",
+  eval: "تعديل النقاط",
+  priv: "محادثات خاصة",
+  mic: "استخدام المايك",
+  cam: "استخدام الكاميرا",
+  upic: "تغيير الصورة",
+  unm: "تغيير الاسم",
+  upro: "تعديل الملف الشخصي",
+};
+
 const LEGACY_CP_SECTIONS: Record<string, {
   title: string;
   description: string;
@@ -316,8 +342,6 @@ const DatabaseSection = () => {
   );
 };
 
-// --- بقية الأقسام (Overview, Users, Rooms, etc) تبقى كما هي مع تحسينات طفيفة في التصميم ---
-
 const OverviewSection = () => {
   const [stats, setStats] = useState({ users: 0, banned: 0, rooms: 0, reports: 0 });
 
@@ -429,9 +453,6 @@ const UsersSection = () => {
   );
 };
 
-// --- بقية المكونات (RoomsSection, RolesSection, etc) تتبع نفس النمط المطور ---
-// تم اختصارها هنا للحفاظ على حجم الرد، ولكنها موجودة في الكود الفعلي
-
 const RoomsSection = () => {
   const [rooms, setRooms] = useState<any[]>([]);
   useEffect(() => {
@@ -534,16 +555,21 @@ const RolesSection = () => {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(selected.permissions || {}).map(([key, val]: [string, any]) => (
-              <div key={key} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{key}</span>
-                {typeof val === 'boolean' ? (
-                  <Switch checked={val} />
-                ) : (
-                  <Input className="w-20 h-8 text-center font-black" value={String(val)} />
-                )}
-              </div>
-            ))}
+            {Object.entries(selected.permissions || {}).map(([key, val]: [string, any]) => {
+              const isBooleanLike = val === 0 || val === 1 || typeof val === 'boolean';
+              const translatedKey = PERMISSION_TRANSLATIONS[key] || key;
+              
+              return (
+                <div key={key} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{translatedKey}</span>
+                  {isBooleanLike ? (
+                    <Switch checked={val === 1 || val === true} />
+                  ) : (
+                    <Input className="w-24 h-9 text-center font-black rounded-xl" value={String(val)} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
