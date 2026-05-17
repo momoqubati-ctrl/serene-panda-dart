@@ -61,6 +61,21 @@ const PERMISSION_TRANSLATIONS: Record<string, string> = {
   upic: "تغيير الصورة",
   unm: "تغيير الاسم",
   upro: "تعديل الملف الشخصي",
+  // المفاتيح الجديدة من الصورة
+  brbbot: "بوت الرد التلقائي",
+  delpic: "حذف صور الأعضاء",
+  mynick: "زخرفة الاسم الشخصي",
+  history: "سجل الرسائل",
+  bootedit: "تعديل بيانات الطرد",
+  setpower: "تعيين الرتب",
+  publicmsg: "رسائل عامة (إعلان)",
+  unick: "تغيير أسماء الأعضاء",
+  delmsg: "حذف الرسائل",
+  grupes: "إدارة المجموعات",
+  forcepm: "فتح خاص إجباري",
+  stealth: "وضع التخفي",
+  edituser: "تعديل بيانات العضو",
+  upgrades: "إدارة الترقيات",
 };
 
 const LEGACY_CP_SECTIONS: Record<string, {
