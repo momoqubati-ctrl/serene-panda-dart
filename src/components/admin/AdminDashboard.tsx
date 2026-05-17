@@ -16,6 +16,11 @@ import BotsAdminSection from './sections/BotsAdminSection';
 import FiltersAdminSection from './sections/FiltersAdminSection';
 import LegacyCpSection from './sections/LegacyCpSection';
 
+// New Modular Sections
+import ModerationSection from './moderation/ModerationSection';
+import BansSection from './bans/BansSection';
+import AuditLogsSection from './audit/AuditLogsSection';
+
 interface AdminDashboardProps {
   section: string;
 }
@@ -34,7 +39,11 @@ const AdminDashboard = ({ section }: AdminDashboardProps) => {
       case "roles":
         return <RolesSection />;
       case "events":
-        return <EventsSection />;
+        return <ModerationSection />; // تم استبدال السجل البسيط بنظام الإشراف
+      case "actions":
+        return <ModerationSection />;
+      case "bans":
+        return <BansSection />;
       case "settings":
         return <SettingsSection />;
       case "database":
@@ -43,6 +52,8 @@ const AdminDashboard = ({ section }: AdminDashboardProps) => {
         return <BotsAdminSection />;
       case "fltr":
         return <FiltersAdminSection />;
+      case "hostin": // سجل العمليات (Audit)
+        return <AuditLogsSection />;
       default:
         if (legacySection) {
           return <LegacyCpSection config={legacySection} />;
