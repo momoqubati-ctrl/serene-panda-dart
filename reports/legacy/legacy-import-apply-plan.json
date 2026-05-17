@@ -1,0 +1,144 @@
+{
+  "source": {
+    "path": "C:\\xampp\\htdocs\\chetos216-08-2024\\database\\database٥‏-٥‏-٢٠٢٦.sql",
+    "name": "database٥‏-٥‏-٢٠٢٦.sql",
+    "database": "safarihost",
+    "dumpCompletedAt": "2026-05-05T22:23:59",
+    "sha256": "85c1f66e40416c1bdd4bc4063751e257380fb67bc958304d3e916e4bcbf16e6b"
+  },
+  "mode": "apply",
+  "phase": "core_identity_settings",
+  "phaseTables": [
+    "users",
+    "powers",
+    "rooms",
+    "settings",
+    "site",
+    "owner",
+    "site_master_wallet"
+  ],
+  "counts": {
+    "users": 7,
+    "userProfiles": 7,
+    "userWallets": 7,
+    "roles": 6,
+    "rolePermissions": 260,
+    "rooms": 2,
+    "siteSettings": 4,
+    "siteAssets": 21,
+    "gifts": 7,
+    "roomBadges": 2,
+    "siteBadges": 2,
+    "siteWallets": 1,
+    "mappings": 397
+  },
+  "diagnostics": [],
+  "applyResult": {
+    "batchId": "e5073d35-dea3-4944-9c9a-03e383915932",
+    "written": {
+      "mappings": 397,
+      "roles": 6,
+      "users": 7,
+      "userProfiles": 7,
+      "userWallets": 7,
+      "userRoleAssignments": 5,
+      "rooms": 2,
+      "siteSettings": 4,
+      "siteAssets": 21,
+      "gifts": 7,
+      "siteBadges": 2,
+      "roomBadges": 2,
+      "siteWallets": 1
+    }
+  },
+  "samples": {
+    "users": [
+      {
+        "legacyId": 1,
+        "username": "mohammed",
+        "displayName": "mohammed",
+        "role": "admin",
+        "coins": 0,
+        "requiresPasswordReset": true
+      },
+      {
+        "legacyId": 2,
+        "username": "safari2023",
+        "displayName": "seohost",
+        "role": "admin",
+        "coins": 0,
+        "requiresPasswordReset": true
+      },
+      {
+        "legacyId": 3,
+        "username": "chatmaster11",
+        "displayName": "admin",
+        "role": "admin",
+        "coins": 7,
+        "requiresPasswordReset": true
+      },
+      {
+        "legacyId": 4,
+        "username": "chatmaster",
+        "displayName": "chatmaster",
+        "role": "admin",
+        "coins": 0,
+        "requiresPasswordReset": true
+      },
+      {
+        "legacyId": 5,
+        "username": "medo",
+        "displayName": "medo",
+        "role": "admin",
+        "coins": 58,
+        "requiresPasswordReset": true
+      }
+    ],
+    "roles": [
+      {
+        "name": "ispower",
+        "rank": 100000,
+        "permissions": 40
+      },
+      {
+        "name": "Hide",
+        "rank": 10000,
+        "permissions": 40
+      },
+      {
+        "name": "ispower2",
+        "rank": 5000,
+        "permissions": 39
+      },
+      {
+        "name": "chatmaster",
+        "rank": 9999,
+        "permissions": 47
+      },
+      {
+        "name": "admin",
+        "rank": 9000,
+        "permissions": 47
+      },
+      {
+        "name": "ترقية ذهبية",
+        "rank": 5000,
+        "permissions": 47
+      }
+    ],
+    "rooms": [
+      {
+        "legacyId": "D8D8A9A9C0",
+        "slug": "d8d8a9a9c0",
+        "name": "الغرفة العامة",
+        "ownerLegacyKey": "#3"
+      },
+      {
+        "legacyId": "2566st17zd",
+        "slug": "2566st17zd",
+        "name": "صنعاء",
+        "ownerLegacyKey": "#3"
+      }
+    ]
+  }
+}

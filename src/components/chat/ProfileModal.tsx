@@ -49,6 +49,32 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
       : undefined;
   const profileAccentColor = typeof user.profileAccentColor === "string" && user.profileAccentColor.trim() ? user.profileAccentColor : "#2563EB";
 
+  const handleModerationAction = (action: string) => {
+    const socket = (window as any).__SOCKET__ || import("@/lib/socket").then(m => m.getSocket());
+    import("@/lib/socket").then(m => {
+      const s = m.getSocket();
+      if (!s || !s.connected) {
+        alert("غير متصل بالسيرفر");
+        return;
+      }
+      const reason = prompt("السبب (اختياري):", "");
+      if (reason !== null) {
+        s.emit("moderation_action", {
+          action,
+          targetSocketId: user.socketId || user.id, // we might need socketId, but let's send id if socketId isn't there
+          reason
+        }, (res: any) => {
+          if (!res.success) {
+            alert(res.message || "فشل الإجراء");
+          } else {
+            alert(res.message || "تم بنجاح");
+            onClose();
+          }
+        });
+      }
+    });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-3xl rtl">
@@ -75,13 +101,13 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
           <div className="flex justify-between items-start mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-slate-900">{user.name}</h2>
+                <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
                 {user.role === 'admin' && <Crown className="text-red-500" size={20} />}
                 <Badge className="bg-blue-50 text-blue-600 border-blue-100">موثق</Badge>
                 {user.giftIconUrl && <img src={user.giftIconUrl} alt="gift" className="h-5 w-5 rounded object-cover" />}
                 {user.profileIconUrl && <img src={user.profileIconUrl} alt="profile icon" className="h-5 w-5 rounded object-cover" />}
               </div>
-              <p className="text-slate-500 text-sm flex items-center gap-1 mt-1">
+              <p className="text-muted-foreground text-sm flex items-center gap-1 mt-1">
                 <MapPin size={14} />
                 <img src={getCountryFlagSrc(user.country)} alt={user.country} className="h-3 w-4 rounded-sm object-cover" />
                 {getCountryName(user.country)} • {user.room}
@@ -97,19 +123,19 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
             </div>
           </div>
 
-          <p className="text-slate-600 text-sm mb-6 leading-relaxed" dir="rtl">
+          <p className="text-muted-foreground text-sm mb-6 leading-relaxed" dir="rtl">
             {statusMsg}
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6 bg-slate-50 p-4 rounded-2xl">
+          <div className="grid grid-cols-3 gap-4 mb-6 bg-muted p-4 rounded-2xl">
             <StatItem label="إعجاب" value={user.rep || 0} />
             <StatItem label="نقاط" value={user.points || user.evaluation || 0} />
             <StatItem label="كوين" value={user.coins || 0} />
           </div>
 
           {(user.profileThemeId || user.messageBubbleStyle || user.nameEffectId) && (
-            <div className="mb-6 rounded-2xl border border-slate-100 bg-white p-3 text-xs font-bold text-slate-500" dir="rtl">
+            <div className="mb-6 rounded-2xl border border-border bg-card p-3 text-xs font-bold text-muted-foreground" dir="rtl">
               <div>الثيم: {user.profileThemeId || "افتراضي"}</div>
               <div>شكل الرسائل: {user.messageBubbleStyle || "افتراضي"}</div>
               <div>تأثير الاسم: {user.nameEffectId || "بدون"}</div>
@@ -129,13 +155,13 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
           {/* Admin Tools */}
           {isAdmin && (
             <div className="border-t pt-6">
-              <h4 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">أدوات الإدارة</h4>
+              <h4 className="text-xs font-bold text-muted-foreground mb-4 uppercase tracking-wider">أدوات الإدارة</h4>
               <div className="grid grid-cols-2 gap-2">
-                <AdminButton icon={<Edit3 size={16} />} label="تعديل البيانات" />
+                <AdminButton icon={<Bell size={16} />} label="إرسال تنبيه" onClick={() => handleModerationAction("alert")} />
                 <AdminButton icon={<MoveRight size={16} />} label="نقل لغرفة" />
                 <AdminButton icon={<Shield size={16} />} label="تعديل الرتبة" />
-                <AdminButton icon={<Ban size={16} />} label="حظر العضو" danger />
-                <AdminButton icon={<Trash2 size={16} />} label="طرد عام" danger />
+                <AdminButton icon={<Ban size={16} />} label="حظر العضو" danger onClick={() => handleModerationAction("ban")} />
+                <AdminButton icon={<Trash2 size={16} />} label="طرد عام" danger onClick={() => handleModerationAction("kick")} />
               </div>
             </div>
           )}
@@ -147,16 +173,17 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
 
 const StatItem = ({ label, value }: any) => (
   <div className="text-center">
-    <div className="text-lg font-bold text-slate-900">{value}</div>
-    <div className="text-[10px] text-slate-500 font-medium uppercase">{label}</div>
+    <div className="text-lg font-bold text-foreground">{value}</div>
+    <div className="text-[10px] text-muted-foreground font-medium uppercase">{label}</div>
   </div>
 );
 
-const AdminButton = ({ icon, label, danger }: any) => (
+const AdminButton = ({ icon, label, danger, onClick }: any) => (
   <Button 
     variant="ghost" 
     size="sm" 
-    className={`justify-start gap-2 h-10 rounded-xl text-xs font-bold ${danger ? 'text-red-500 hover:bg-red-50 hover:text-red-600' : 'text-slate-600 hover:bg-slate-100'}`}
+    onClick={onClick}
+    className={`justify-start gap-2 h-10 rounded-xl text-xs font-bold ${danger ? 'text-red-500 hover:bg-red-50 hover:text-red-600' : 'text-muted-foreground hover:bg-slate-100'}`}
   >
     {icon}
     {label}

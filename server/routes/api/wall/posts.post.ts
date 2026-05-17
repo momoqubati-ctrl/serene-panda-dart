@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody, setResponseStatus } from "nitro";
+import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { createWallPost } from "../../../services/wallService";
 
 export default defineEventHandler(async (event) => {

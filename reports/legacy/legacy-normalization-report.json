@@ -1,0 +1,48 @@
+{
+  "mode": "apply",
+  "result": {
+    "bars": {
+      "comments": 4,
+      "replies": 0,
+      "likes": 13
+    },
+    "settings": {
+      "settings": 2,
+      "assets": 19,
+      "categories": 2,
+      "gifts": 7,
+      "siteBadges": 2,
+      "roomBadges": 2
+    },
+    "powers": {
+      "roles": 6,
+      "permissions": 260,
+      "assignments": 5
+    },
+    "stories": {
+      "items": 1
+    },
+    "rooms": {
+      "stageRows": 10,
+      "badgeAssignments": 3
+    },
+    "droppedDuplicateIndexes": 5,
+    "counts": {
+      "bar_comments": 4,
+      "bar_comment_replies": 0,
+      "bar_likes": 13,
+      "site_settings": 2,
+      "site_assets": 19,
+      "gift_categories": 2,
+      "gifts": 7,
+      "site_badges": 2,
+      "room_badges": 2,
+      "roles": 6,
+      "role_permissions": 260,
+      "user_role_assignments": 5,
+      "story_items": 1,
+      "room_stage_state": 10,
+      "room_badge_assignments": 3
+    }
+  }
+}

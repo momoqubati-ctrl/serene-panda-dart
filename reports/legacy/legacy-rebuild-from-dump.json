@@ -1,0 +1,255 @@
+{
+  "mode": "apply",
+  "source": {
+    "path": "C:\\xampp\\htdocs\\chetos216-08-2024\\database\\database٥‏-٥‏-٢٠٢٦.sql",
+    "sha256": "85c1f66e40416c1bdd4bc4063751e257380fb67bc958304d3e916e4bcbf16e6b",
+    "dumpCompletedAt": "2026-05-05T22:23:59"
+  },
+  "counts": {
+    "tables": 39,
+    "columns": 419,
+    "rows": 945
+  },
+  "tables": [
+    {
+      "name": "agent_payment_methods",
+      "columns": 10,
+      "rows": 0
+    },
+    {
+      "name": "agent_wallet_ledger",
+      "columns": 15,
+      "rows": 0
+    },
+    {
+      "name": "agent_wallets",
+      "columns": 7,
+      "rows": 0
+    },
+    {
+      "name": "agents",
+      "columns": 15,
+      "rows": 0
+    },
+    {
+      "name": "band",
+      "columns": 9,
+      "rows": 0
+    },
+    {
+      "name": "bars",
+      "columns": 12,
+      "rows": 24
+    },
+    {
+      "name": "bots",
+      "columns": 10,
+      "rows": 501
+    },
+    {
+      "name": "bsb",
+      "columns": 3,
+      "rows": 1
+    },
+    {
+      "name": "coin_ledger",
+      "columns": 16,
+      "rows": 26
+    },
+    {
+      "name": "coin_packages",
+      "columns": 12,
+      "rows": 0
+    },
+    {
+      "name": "cuts",
+      "columns": 3,
+      "rows": 1
+    },
+    {
+      "name": "followers",
+      "columns": 4,
+      "rows": 2
+    },
+    {
+      "name": "gift_notifications",
+      "columns": 13,
+      "rows": 13
+    },
+    {
+      "name": "histletter",
+      "columns": 9,
+      "rows": 5
+    },
+    {
+      "name": "hosts",
+      "columns": 3,
+      "rows": 1
+    },
+    {
+      "name": "internal_mail",
+      "columns": 13,
+      "rows": 1
+    },
+    {
+      "name": "intromsg",
+      "columns": 4,
+      "rows": 1
+    },
+    {
+      "name": "logs",
+      "columns": 9,
+      "rows": 21
+    },
+    {
+      "name": "names",
+      "columns": 6,
+      "rows": 32
+    },
+    {
+      "name": "notext",
+      "columns": 4,
+      "rows": 5
+    },
+    {
+      "name": "owner",
+      "columns": 13,
+      "rows": 1
+    },
+    {
+      "name": "owner_agent_transfers",
+      "columns": 12,
+      "rows": 0
+    },
+    {
+      "name": "powers",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "name": "profile_visits",
+      "columns": 8,
+      "rows": 16
+    },
+    {
+      "name": "room_welcome_visits",
+      "columns": 7,
+      "rows": 13
+    },
+    {
+      "name": "rooms",
+      "columns": 20,
+      "rows": 2
+    },
+    {
+      "name": "settings",
+      "columns": 11,
+      "rows": 1
+    },
+    {
+      "name": "site",
+      "columns": 5,
+      "rows": 1
+    },
+    {
+      "name": "site_master_wallet",
+      "columns": 7,
+      "rows": 1
+    },
+    {
+      "name": "site_master_wallet_ledger",
+      "columns": 15,
+      "rows": 0
+    },
+    {
+      "name": "stats",
+      "columns": 7,
+      "rows": 134
+    },
+    {
+      "name": "storie",
+      "columns": 9,
+      "rows": 1
+    },
+    {
+      "name": "storieview",
+      "columns": 7,
+      "rows": 4
+    },
+    {
+      "name": "sub",
+      "columns": 8,
+      "rows": 1
+    },
+    {
+      "name": "top10wall",
+      "columns": 5,
+      "rows": 128
+    },
+    {
+      "name": "topup_order_events",
+      "columns": 10,
+      "rows": 0
+    },
+    {
+      "name": "topup_orders",
+      "columns": 39,
+      "rows": 0
+    },
+    {
+      "name": "topup_settlement_ledger",
+      "columns": 19,
+      "rows": 0
+    },
+    {
+      "name": "users",
+      "columns": 38,
+      "rows": 7
+    }
+  ],
+  "applyResult": {
+    "droppedTables": 39,
+    "droppedEnums": 0,
+    "inserted": {
+      "agent_payment_methods": 0,
+      "agent_wallet_ledger": 0,
+      "agent_wallets": 0,
+      "agents": 0,
+      "band": 0,
+      "bars": 24,
+      "bots": 501,
+      "bsb": 1,
+      "coin_ledger": 26,
+      "coin_packages": 0,
+      "cuts": 1,
+      "followers": 2,
+      "gift_notifications": 13,
+      "histletter": 5,
+      "hosts": 1,
+      "internal_mail": 1,
+      "intromsg": 1,
+      "logs": 21,
+      "names": 32,
+      "notext": 5,
+      "owner": 1,
+      "owner_agent_transfers": 0,
+      "powers": 1,
+      "profile_visits": 16,
+      "room_welcome_visits": 13,
+      "rooms": 2,
+      "settings": 1,
+      "site": 1,
+      "site_master_wallet": 1,
+      "site_master_wallet_ledger": 0,
+      "stats": 134,
+      "storie": 1,
+      "storieview": 4,
+      "sub": 1,
+      "top10wall": 128,
+      "topup_order_events": 0,
+      "topup_orders": 0,
+      "topup_settlement_ledger": 0,
+      "users": 7
+    }
+  }
+}

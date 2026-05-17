@@ -114,7 +114,7 @@ export const registerMember = async (input: { username: string; password: string
     };
   }
 
-  const role: AuthRole = username === "admin" ? "admin" : "member";
+  const role: AuthRole = username === "admin" ? "owner" : "member";
   const normalizedCountryCode = normalizeCountryCode(input.countryCode);
   const profile = createUserProfileDefaults(role);
   const passwordHash = hashPassword(input.password);

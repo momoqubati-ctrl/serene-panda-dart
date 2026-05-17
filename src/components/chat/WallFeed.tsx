@@ -75,12 +75,12 @@ const WallFeed = () => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 ltr">
+    <div className="flex flex-col h-full bg-muted ltr">
       <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
           <Input 
             placeholder="Search wall .." 
-            className="h-7 bg-white/10 border-none text-white placeholder:text-white/50 pl-7 rounded-md text-[10px]"
+            className="h-7 bg-card/10 border-none text-white placeholder:text-white/50 pl-7 rounded-md text-[10px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -110,11 +110,11 @@ const WallFeed = () => {
               </div>
               <div className="flex items-center justify-between border-t pt-2">
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-600 gap-1.5 rounded-lg hover:bg-slate-100">
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground gap-1.5 rounded-lg hover:bg-slate-100">
                     <ImageIcon size={16} className="text-green-500" />
                     <span className="text-[10px] font-bold">صورة</span>
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-600 gap-1.5 rounded-lg hover:bg-slate-100">
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground gap-1.5 rounded-lg hover:bg-slate-100">
                     <Mic size={16} className="text-red-500" />
                     <span className="text-[10px] font-bold">صوت</span>
                   </Button>
@@ -137,19 +137,19 @@ const WallFeed = () => {
             <Loader2 className="animate-spin text-primary" size={24} />
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="text-center p-8 text-slate-400 text-xs font-bold">لا توجد منشورات حالياً</div>
+          <div className="text-center p-8 text-muted-foreground text-xs font-bold">لا توجد منشورات حالياً</div>
         ) : (
           filteredPosts.map((post) => (
             <Card key={post.id} className="border-none shadow-sm rounded-xl overflow-hidden">
               <CardHeader className="p-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
-                  <Avatar className="w-9 h-9 rounded-lg border border-slate-100">
+                  <Avatar className="w-9 h-9 rounded-lg border border-border">
                     <AvatarImage src={post.author?.avatar || "/pic.png"} />
                     <AvatarFallback>{post.author?.name?.[0]}</AvatarFallback>
                   </Avatar>
                   <div dir="rtl">
-                    <h4 className="font-black text-[11px] text-slate-800">{post.author?.name}</h4>
-                    <p className="text-[9px] text-slate-400 font-bold">
+                    <h4 className="font-black text-[11px] text-foreground">{post.author?.name}</h4>
+                    <p className="text-[9px] text-muted-foreground font-bold">
                       {new Date(post.createdAt).toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -159,7 +159,7 @@ const WallFeed = () => {
                 </Button>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="px-3 pb-2 text-[11px] text-slate-700 leading-relaxed font-medium" dir="rtl">
+                <div className="px-3 pb-2 text-[11px] text-foreground leading-relaxed font-medium" dir="rtl">
                   {post.body}
                 </div>
                 {post.mediaUrl && (
@@ -169,16 +169,16 @@ const WallFeed = () => {
                 )}
                 <div className="p-2 flex items-center justify-between border-t mt-1">
                   <div className="flex gap-3">
-                    <button className="flex items-center gap-1 text-slate-500 hover:text-red-500 transition-colors">
+                    <button className="flex items-center gap-1 text-muted-foreground hover:text-red-500 transition-colors">
                       <Heart size={16} />
                       <span className="text-[10px] font-bold">0</span>
                     </button>
-                    <button className="flex items-center gap-1 text-slate-500 hover:text-primary transition-colors">
+                    <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
                       <MessageCircle size={16} />
                       <span className="text-[10px] font-bold">0</span>
                     </button>
                   </div>
-                  <button className="text-slate-500 hover:text-primary transition-colors">
+                  <button className="text-muted-foreground hover:text-primary transition-colors">
                     <Share2 size={16} />
                   </button>
                 </div>

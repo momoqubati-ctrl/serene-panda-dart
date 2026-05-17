@@ -1,0 +1,57 @@
+import { defineEventHandler, getQuery, setResponseStatus } from "h3";
+import {
+  assertSafeTableName,
+  countTableRows,
+  listAdminColumns,
+  listAdminTables,
+  listTableRows,
+  tableExists,
+} from "../../../services/legacyAdminService";
+import { getAdminContext } from "../../../services/adminAccess";
+
+export default defineEventHandler(async (event) => {
+  const admin = getAdminContext(event);
+  if (!admin.ok) {
+    setResponseStatus(event, admin.statusCode);
+    return { success: false, message: admin.message };
+  }
+
+  const query = getQuery(event);
+  const tableName = assertSafeTableName(query.table);
+  const limit = Number(query.limit || 50);
+  const offset = Number(query.offset || 0);
+
+  try {
+    const tables = await listAdminTables();
+
+    if (!tableName) {
+      return { success: true, tables, selectedTable: null, columns: [], rows: [], totalRows: 0 };
+    }
+
+    if (!(await tableExists(tableName))) {
+      setResponseStatus(event, 404);
+      return { success: false, message: "الجدول غير موجود" };
+    }
+
+    const [columns, rows, totalRows] = await Promise.all([
+      listAdminColumns(tableName),
+      listTableRows(tableName, limit, offset),
+      countTableRows(tableName),
+    ]);
+
+    return {
+      success: true,
+      tables,
+      selectedTable: tableName,
+      columns,
+      rows,
+      totalRows,
+      limit: Math.min(Math.max(limit || 50, 1), 100),
+      offset: Math.max(offset || 0, 0),
+    };
+  } catch (err) {
+    console.error("Admin database browser error:", err);
+    setResponseStatus(event, 500);
+    return { success: false, message: "تعذر قراءة بيانات القاعدة" };
+  }
+});

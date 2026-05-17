@@ -23,7 +23,7 @@ const GiftStore = () => {
             <h3 className="text-xl font-bold mb-1">متجر الهدايا</h3>
             <p className="text-white/80 text-xs">أرسل الهدايا لأصدقائك لزيادة شعبيتهم</p>
           </div>
-          <div className="bg-white/20 px-4 py-2 rounded-2xl backdrop-blur-sm flex items-center gap-2">
+          <div className="bg-card/20 px-4 py-2 rounded-2xl backdrop-blur-sm flex items-center gap-2">
             <Coins size={20} className="text-yellow-200" />
             <span className="font-bold">2,450</span>
           </div>
@@ -37,7 +37,7 @@ const GiftStore = () => {
               <div className="text-5xl mb-4 transform hover:scale-110 transition-transform duration-300">
                 {gift.icon}
               </div>
-              <h4 className="font-bold text-slate-800 mb-1">{gift.name}</h4>
+              <h4 className="font-bold text-foreground mb-1">{gift.name}</h4>
               <div className="flex items-center gap-1 text-amber-600 font-bold text-sm mb-4">
                 <Coins size={14} />
                 <span>{gift.price}</span>
@@ -50,8 +50,8 @@ const GiftStore = () => {
         ))}
       </div>
 
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-        <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+      <div className="bg-card p-4 rounded-2xl shadow-sm border border-border">
+        <h4 className="font-bold text-foreground mb-4 flex items-center gap-2">
           <Trophy size={18} className="text-yellow-500" />
           أكثر الهدايا إرسالاً اليوم
         </h4>
@@ -59,11 +59,11 @@ const GiftStore = () => {
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-3">
-                <span className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-500">{i}</span>
+                <span className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-bold text-muted-foreground">{i}</span>
                 <span className="text-2xl">🌹</span>
-                <span className="font-medium text-slate-700">وردة حمراء</span>
+                <span className="font-medium text-foreground">وردة حمراء</span>
               </div>
-              <span className="text-slate-400 text-xs">1,240 مرة</span>
+              <span className="text-muted-foreground text-xs">1,240 مرة</span>
             </div>
           ))}
         </div>

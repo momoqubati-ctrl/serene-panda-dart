@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Gift, Send, Plus, X, Volume2, VolumeX, Crown, MicOff, ChevronLeft, Mic2, Loader2 } from "lucide-react";
 import { getCountryFlagSrc, normalizeCountryCode } from "@/lib/countries";
+import { getSocket } from "@/lib/socket";
 
 type ChatMessage = {
   id: string;
@@ -25,6 +26,16 @@ type ChatMessage = {
   createdAt: string;
   pending?: boolean;
   failed?: boolean;
+};
+
+type RoomMember = {
+  id: string;
+  username: string;
+  role: string;
+  avatar: string;
+  countryCode: string;
+  avatarFrameUrl?: string;
+  giftIconUrl?: string;
 };
 
 const getStoredUser = () => {
@@ -81,21 +92,85 @@ const formatMessageTime = (value: string) =>
 const getMessageBubbleClass = (msg: ChatMessage) => {
   if (msg.isSystem) return "border-teal-100 bg-teal-50 text-teal-700";
   if (msg.failed) return "border-red-100 bg-red-50 text-red-700";
-  if (msg.messageBubbleStyle === "soft") return "border-blue-100 bg-blue-50 text-slate-800";
+  if (msg.messageBubbleStyle === "soft") return "border-blue-100 bg-blue-50 text-foreground";
   if (msg.messageBubbleStyle === "dark") return "border-slate-800 bg-slate-900 text-white";
-  return "border-slate-100 bg-white text-slate-700";
+  return "border-border bg-card text-foreground";
 };
 
-const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
+const ChatInputArea = React.memo(({ roomId, onSendMessage }: { roomId: string, onSendMessage: (text: string) => void }) => {
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = message.trim();
+    if (!text || isSending) return;
+
+    setIsSending(true);
+    setMessage(""); // Clear instantly for better UX
+
+    // Calling the parent which handles optimistic UI and socket emit
+    await onSendMessage(text);
+    
+    setIsSending(false);
+    
+    const socket = getSocket();
+    socket.emit("stop_typing", { roomId });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+
+    const socket = getSocket();
+    if (!typingTimerRef.current) {
+      socket.emit("typing", { roomId });
+      typingTimerRef.current = setTimeout(() => {
+        typingTimerRef.current = null;
+      }, 1000);
+    }
+  };
+
+  return (
+    <div className="z-10 border-t border-border bg-card p-3 shadow-lg">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <div className="flex gap-1">
+          <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-primary">
+            <Plus size={20} />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-pink-500">
+            <Gift size={20} />
+          </Button>
+        </div>
+        <div className="relative flex-1">
+          <Input
+            placeholder="اكتب رسالة..."
+            className="h-10 rounded-xl border-border bg-muted text-xs font-bold text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary"
+            value={message}
+            onChange={handleInputChange}
+            dir="rtl"
+            maxLength={1000}
+          />
+        </div>
+        <Button type="submit" disabled={!message.trim() || isSending} className={`h-10 w-10 rounded-xl p-0 shadow-lg ${message.trim() ? "bg-primary shadow-primary/20" : "bg-slate-100 text-muted-foreground"}`}>
+          {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+        </Button>
+      </form>
+    </div>
+  );
+});
+
+const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [members, setMembers] = useState<RoomMember[]>([]);
+  const [memberCount, setMemberCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState("");
   const [isMuted, setIsMuted] = useState(false);
   const [showMics, setShowMics] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const latestMessageAt = useRef<string>("");
 
   const roomId = useMemo(() => String(room?.id ?? "general"), [room?.id]);
 
@@ -113,80 +188,122 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
 
       return Array.from(byKey.values()).sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
     });
-
-    incoming.forEach((item) => {
-      if (!latestMessageAt.current || Date.parse(item.createdAt) > Date.parse(latestMessageAt.current)) {
-        latestMessageAt.current = item.createdAt;
-      }
-    });
   }, []);
 
-  const loadMessages = useCallback(
-    async (after?: string) => {
-      try {
-        const query = after ? `?after=${encodeURIComponent(after)}` : "";
-        const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/messages${query}`);
-        const data = await response.json();
+  // ربط Socket.io
+  useEffect(() => {
+    const socket = getSocket();
 
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || "تعذر تحميل الرسائل");
+    const onConnect = () => {
+      setIsConnected(true);
+      // الانضمام للغرفة
+      socket.emit("join_room", { roomId }, (res: any) => {
+        if (res?.success) {
+          if (res.messages) {
+            mergeMessages(res.messages);
+          }
+          if (res.members) {
+            setMembers(res.members);
+          }
+          setMemberCount(res.memberCount || 0);
+          setError("");
+        } else {
+          setError(res?.message || "تعذر الانضمام للغرفة");
         }
-
-        mergeMessages(data.messages);
-        setError("");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "تعذر تحميل الرسائل");
-      } finally {
         setIsLoading(false);
-      }
-    },
-    [mergeMessages, roomId],
-  );
+      });
+    };
 
-  useEffect(() => {
-    latestMessageAt.current = "";
-    setMessages([]);
-    setIsLoading(true);
-    loadMessages();
-  }, [loadMessages, roomId]);
+    const onDisconnect = () => {
+      setIsConnected(false);
+    };
 
-  useEffect(() => {
-    const source = new EventSource(`/api/rooms/${encodeURIComponent(roomId)}/stream`);
-
-    source.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === "message" && payload.message) {
-          mergeMessages([payload.message]);
-        }
-      } catch {
-        // Ignore malformed stream frames. The next valid frame will recover the UI.
+    const onNewMessage = (data: { roomId: string; message: ChatMessage }) => {
+      if (data.roomId === roomId) {
+        mergeMessages([data.message]);
       }
     };
 
-    source.onerror = () => {
-      source.close();
-      window.setTimeout(() => {
-        loadMessages(latestMessageAt.current);
-      }, 1000);
+    const onUserJoined = (data: { user: RoomMember; memberCount: number }) => {
+      setMembers((prev) => {
+        if (prev.some((m) => m.id === data.user.id)) return prev;
+        return [...prev, data.user];
+      });
+      setMemberCount(data.memberCount);
     };
 
-    return () => source.close();
-  }, [loadMessages, mergeMessages, roomId]);
+    const onUserLeft = (data: { socketId: string; memberCount: number }) => {
+      setMemberCount(data.memberCount);
+    };
 
+    const onUserTyping = (data: { username: string }) => {
+      setTypingUsers((prev) => {
+        if (prev.includes(data.username)) return prev;
+        return [...prev, data.username];
+      });
+      // إزالة بعد 2 ثانية
+      setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((u) => u !== data.username));
+      }, 2000);
+    };
+
+    const onSystemMessage = (data: { text: string; roomId: string }) => {
+      if (data.roomId === roomId) {
+        mergeMessages([
+          {
+            id: `sys-${Date.now()}`,
+            user: "النظام",
+            role: "system",
+            text: data.text,
+            avatar: "/pic.png",
+            countryCode: "SA",
+            color: "text-teal-600",
+            isSystem: true,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("new_message", onNewMessage);
+    socket.on("user_joined", onUserJoined);
+    socket.on("user_left", onUserLeft);
+    socket.on("user_typing", onUserTyping);
+    socket.on("system_message", onSystemMessage);
+
+    // إذا كان متصل بالفعل، انضم للغرفة مباشرة
+    if (socket.connected) {
+      onConnect();
+    } else {
+      socket.connect();
+    }
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("new_message", onNewMessage);
+      socket.off("user_joined", onUserJoined);
+      socket.off("user_left", onUserLeft);
+      socket.off("user_typing", onUserTyping);
+      socket.off("system_message", onSystemMessage);
+      socket.emit("leave_room", { roomId });
+    };
+  }, [roomId, mergeMessages]);
+
+  // Auto scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = message.trim();
-    if (!text || isSending) return;
-
+  const handleSendMessage = useCallback(async (text: string) => {
     const user = getStoredUser();
     const clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    // Optimistic UI
     const pendingMessage: ChatMessage = {
       id: clientId,
       clientId,
@@ -198,56 +315,37 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
       avatarFrameUrl: user.avatarFrameUrl,
       giftIconUrl: user.giftIconUrl,
       messageBubbleStyle: user.messageBubbleStyle,
-      color: user.role === "admin" ? "text-red-600" : "text-slate-700",
+      color: user.role === "admin" ? "text-red-600" : "text-foreground",
       isOwner: user.role === "admin",
       createdAt: new Date().toISOString(),
       pending: true,
     };
 
-    setMessage("");
-    setIsSending(true);
     mergeMessages([pendingMessage]);
 
-    try {
-      const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId,
-          text,
-          user: user.name,
-          role: user.role,
-          countryCode: user.countryCode,
-          avatar: user.avatar,
-          avatarFrameUrl: user.avatarFrameUrl,
-          giftIconUrl: user.giftIconUrl,
-          messageBubbleStyle: user.messageBubbleStyle,
-        }),
+    return new Promise<void>((resolve) => {
+      const socket = getSocket();
+      socket.emit("room_message", { roomId, text, clientId }, (res: any) => {
+        if (res?.success && res.message) {
+          mergeMessages([res.message]);
+        } else {
+          setMessages((current) =>
+            current.map((item) =>
+              item.clientId === clientId
+                ? { ...item, pending: false, failed: true, text: `${item.text} - فشل الإرسال` }
+                : item,
+            ),
+          );
+          setError(res?.message || "فشل إرسال الرسالة");
+        }
+        resolve();
       });
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "فشل إرسال الرسالة");
-      }
-
-      mergeMessages([data.message]);
-    } catch (err) {
-      setMessages((current) =>
-        current.map((item) =>
-          item.clientId === clientId
-            ? { ...item, pending: false, failed: true, text: `${item.text} - فشل الإرسال` }
-            : item,
-        ),
-      );
-      setError(err instanceof Error ? err.message : "فشل إرسال الرسالة");
-    } finally {
-      setIsSending(false);
-    }
-  };
+    });
+  }, [roomId, mergeMessages]);
 
   return (
-    <div className={`flex h-full flex-col bg-white ltr ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
-      <header className="z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2 shadow-sm">
+    <div className={`flex h-full flex-col bg-card ltr ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
+      <header className="z-10 flex items-center justify-between border-b border-border bg-card px-4 py-2 shadow-sm">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
@@ -255,25 +353,31 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
             </Button>
           )}
           <div className="relative">
-            <Avatar className="h-10 w-10 rounded-xl border border-slate-100 shadow-sm">
+            <Avatar className="h-10 w-10 rounded-xl border border-border shadow-sm">
               <AvatarImage src={room.image} />
               <AvatarFallback>{room.name?.[0] ?? "غ"}</AvatarFallback>
             </Avatar>
-            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500" />
+            <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
           </div>
           <div dir="rtl">
             <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-black leading-tight text-slate-800">{room.name}</h3>
+              <h3 className="text-xs font-black leading-tight text-foreground">{room.name}</h3>
               <Crown size={12} className="text-yellow-500" />
             </div>
-            <p className="text-[9px] font-bold text-slate-400">بواسطة: {room.owner}</p>
+            <p className="text-[9px] font-bold text-muted-foreground">
+              {memberCount > 0 ? `${memberCount} متصل` : "بواسطة: " + room.owner}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)} className={`h-9 w-9 rounded-xl ${isMuted ? "bg-red-50 text-red-500" : "text-slate-400"}`}>
+          <div className={`mx-1 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${isConnected ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
+            <div className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
+            {isConnected ? "متصل" : "غير متصل"}
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)} className={`h-9 w-9 rounded-xl ${isMuted ? "bg-red-50 text-red-500" : "text-muted-foreground"}`}>
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setShowMics(!showMics)} className={`h-9 w-9 rounded-xl ${showMics ? "bg-primary/5 text-primary" : "text-slate-400"}`}>
+          <Button variant="ghost" size="icon" onClick={() => setShowMics(!showMics)} className={`h-9 w-9 rounded-xl ${showMics ? "bg-primary/5 text-primary" : "text-muted-foreground"}`}>
             <Mic2 size={18} />
           </Button>
           <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 rounded-xl text-red-500 hover:bg-red-50">
@@ -283,11 +387,11 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
       </header>
 
       {showMics && (
-        <div className="grid grid-cols-5 gap-2 overflow-x-auto border-b border-slate-100 bg-slate-50 p-2 no-scrollbar">
+        <div className="grid grid-cols-5 gap-2 overflow-x-auto border-b border-border bg-muted p-2 no-scrollbar">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex flex-col items-center gap-1">
               <div className="relative">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${i === 1 ? "border-primary bg-white shadow-sm" : "border-slate-200 bg-slate-100"}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${i === 1 ? "border-primary bg-card shadow-sm" : "border-border bg-slate-100"}`}>
                   {i === 1 ? (
                     <Avatar className="h-8 w-8">
                       <AvatarImage src="https://i.pravatar.cc/150?u=active-speaker" />
@@ -297,19 +401,19 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
                     <MicOff size={14} className="text-slate-300" />
                   )}
                 </div>
-                <div className="absolute -bottom-1 -right-1 rounded-full border border-slate-200 bg-white px-1 text-[8px] font-black">
+                <div className="absolute -bottom-1 -right-1 rounded-full border border-border bg-card px-1 text-[8px] font-black">
                   {i}
                 </div>
               </div>
-              <span className="w-12 truncate text-center text-[8px] font-bold text-slate-500">{i === 1 ? "متحدث" : "فارغ"}</span>
+              <span className="w-12 truncate text-center text-[8px] font-bold text-muted-foreground">{i === 1 ? "متحدث" : "فارغ"}</span>
             </div>
           ))}
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50/50 p-3">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-muted/50 p-3">
         {isLoading && (
-          <div className="flex h-24 items-center justify-center text-slate-400">
+          <div className="flex h-24 items-center justify-center text-muted-foreground">
             <Loader2 className="animate-spin" size={20} />
           </div>
         )}
@@ -321,7 +425,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
         )}
 
         {!isLoading && messages.length === 0 && (
-          <div className="rounded-lg border border-slate-100 bg-white p-3 text-center text-xs font-bold text-slate-500" dir="rtl">
+          <div className="rounded-lg border border-border bg-card p-3 text-center text-xs font-bold text-muted-foreground" dir="rtl">
             لا توجد رسائل بعد
           </div>
         )}
@@ -345,7 +449,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
                 <img src={getCountryFlagSrc(msg.countryCode)} alt={msg.countryCode} className="h-3 w-4 rounded-sm object-cover" />
                 {msg.giftIconUrl && <img src={msg.giftIconUrl} alt="gift" className="h-4 w-4 rounded object-cover" />}
                 {msg.isOwner && <Badge className="h-3.5 rounded-sm border-none bg-blue-600 px-1 text-[8px] font-black text-white">مالك الموقع</Badge>}
-                <span className="ms-auto text-[8px] font-bold text-slate-400">
+                <span className="ms-auto text-[8px] font-bold text-muted-foreground">
                   {msg.pending ? "جار الإرسال" : msg.failed ? "فشل" : formatMessageTime(msg.createdAt)}
                 </span>
               </div>
@@ -355,33 +459,21 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
             </div>
           </div>
         ))}
+
+        {/* مؤشر الكتابة */}
+        {typingUsers.length > 0 && (
+          <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground" dir="rtl">
+            <div className="flex gap-0.5">
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "0ms" }} />
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "150ms" }} />
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "300ms" }} />
+            </div>
+            <span>{typingUsers.join("، ")} يكتب...</span>
+          </div>
+        )}
       </div>
 
-      <div className="z-10 border-t border-slate-200 bg-white p-3 shadow-lg">
-        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-          <div className="flex gap-1">
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-primary">
-              <Plus size={20} />
-            </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-pink-500">
-              <Gift size={20} />
-            </Button>
-          </div>
-          <div className="relative flex-1">
-            <Input
-              placeholder="اكتب رسالة..."
-              className="h-10 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-primary"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              dir="rtl"
-              maxLength={1000}
-            />
-          </div>
-          <Button type="submit" disabled={!message.trim() || isSending} className={`h-10 w-10 rounded-xl p-0 shadow-lg ${message.trim() ? "bg-primary shadow-primary/20" : "bg-slate-100 text-slate-400"}`}>
-            {isSending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-          </Button>
-        </form>
-      </div>
+      <ChatInputArea roomId={roomId} onSendMessage={handleSendMessage} />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { defineEventHandler, getQuery, getRouterParam, setResponseStatus } from "h3";
 import { listMessages } from "../../../../services/chatStore";
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "roomId");
   const query = getQuery(event);
   const after = typeof query.after === "string" ? query.after : undefined;
@@ -16,6 +16,6 @@ export default defineEventHandler((event) => {
 
   return {
     success: true,
-    messages: listMessages(roomId, after),
+    messages: await listMessages(roomId, after),
   };
 });

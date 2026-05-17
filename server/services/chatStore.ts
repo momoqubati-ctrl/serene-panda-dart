@@ -1,3 +1,8 @@
+import { db } from "../db/index";
+import { rooms } from "../db/schema";
+import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+
 export type ChatRoom = {
   id: string;
   name: string;
@@ -28,69 +33,62 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-const rooms: ChatRoom[] = [
-  {
-    id: "general",
-    name: "الغرفة العامة",
-    description: "أهلاً بكم في الغرفة العامة للجميع",
-    owner: "إدارة الموقع",
-    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
-    members: 0,
-    mics: 5,
-    likes: 1000,
-    locked: false,
-  },
-  {
-    id: "events",
-    name: "غرفة المسابقات",
-    description: "مسابقات وألعاب تفاعلية مباشرة",
-    owner: "المشرف الذهبي",
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
-    members: 0,
-    mics: 3,
-    likes: 500,
-    locked: false,
-  },
-];
-
-const messagesByRoom = new Map<string, ChatMessage[]>();
+// In-memory message store: map of roomId -> array of messages
+// We keep max 100 messages per room in memory
+const inMemoryMessages = new Map<string, ChatMessage[]>();
 const subscribersByRoom = new Map<string, Set<(message: ChatMessage) => void>>();
 
-const now = () => new Date().toISOString();
-const normalizeMessageCountryCode = (value?: string) => String(value || "SA").trim().toUpperCase().slice(0, 2) || "SA";
+export const listRooms = async () => {
+  const dbRooms = await db.select().from(rooms).where(eq(rooms.isDeleted, false));
+  
+  if (dbRooms.length === 0) {
+    // Return default if none in DB yet
+    return [
+      {
+        id: "general",
+        name: "الغرفة العامة",
+        description: "أهلاً بكم في الغرفة العامة للجميع",
+        owner: "إدارة الموقع",
+        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
+        members: 0, mics: 5, likes: 1000, locked: false,
+      },
+      {
+        id: "events",
+        name: "غرفة المسابقات",
+        description: "مسابقات وألعاب تفاعلية مباشرة",
+        owner: "المشرف الذهبي",
+        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
+        members: 0, mics: 3, likes: 500, locked: false,
+      }
+    ];
+  }
 
-const seedRoom = (roomId: string) => {
-  if (messagesByRoom.has(roomId)) return;
-
-  const room = rooms.find((item) => item.id === roomId);
-  messagesByRoom.set(roomId, [
-    {
-      id: crypto.randomUUID(),
-      roomId,
-      user: "بوت الترحيب",
-      role: "bot",
-      text: `مرحباً بكم في ${room?.name ?? "الغرفة"}. الإرسال هنا حقيقي عبر السيرفر، وسيتم نقله لاحقاً إلى WebSocket وPostgreSQL.`,
-      avatar: "https://i.pravatar.cc/150?u=welcome-bot",
-      countryCode: "SA",
-      color: "text-teal-600",
-      isSystem: true,
-      createdAt: now(),
-    },
-  ]);
+  return dbRooms.map(r => ({
+    id: r.slug,
+    name: r.name,
+    description: r.description || "",
+    owner: "إدارة الموقع",
+    image: r.avatarUrl || "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
+    members: 0,
+    mics: r.micSlots,
+    likes: 0,
+    locked: !r.isPublic,
+  }));
 };
 
-export const listRooms = () => rooms;
-
 export const listMessages = (roomId: string, after?: string) => {
-  seedRoom(roomId);
-  const messages = messagesByRoom.get(roomId) ?? [];
-
-  if (!after) return messages.slice(-100);
-
-  const afterTime = Date.parse(after);
-  if (Number.isNaN(afterTime)) return messages.slice(-100);
-
-  return messages.filter((message) => Date.parse(message.createdAt) > afterTime).slice(-100);
+  const messages = inMemoryMessages.get(roomId) || [];
+  
+  if (!after) {
+    return messages;
+  }
+  
+  const afterTime = new Date(after).getTime();
+  if (isNaN(afterTime)) {
+    return messages;
+  }
+  
+  return messages.filter(m => new Date(m.createdAt).getTime() > afterTime);
 };
 
 export const addMessage = (input: {
@@ -104,36 +102,38 @@ export const addMessage = (input: {
   giftIconUrl?: string;
   messageBubbleStyle?: string;
   text: string;
+  isSystem?: boolean;
 }) => {
-  seedRoom(input.roomId);
-
-  const normalizedText = input.text.trim().slice(0, 1000);
   const message: ChatMessage = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     roomId: input.roomId,
     clientId: input.clientId,
     user: input.user?.trim().slice(0, 80) || "زائر",
     role: input.role ?? "guest",
-    text: normalizedText,
     avatar: input.avatar?.trim().slice(0, 255) || "/pic.png",
-    countryCode: normalizeMessageCountryCode(input.countryCode),
+    countryCode: String(input.countryCode || "SA").trim().toUpperCase().slice(0, 2) || "SA",
     avatarFrameUrl: input.avatarFrameUrl?.trim().slice(0, 255) || "",
     giftIconUrl: input.giftIconUrl?.trim().slice(0, 255) || "",
     messageBubbleStyle: input.messageBubbleStyle?.trim().slice(0, 64) || "default",
+    text: input.text.trim().slice(0, 1000),
     color: input.role === "admin" ? "text-red-600" : "text-slate-700",
     isOwner: input.role === "admin",
-    createdAt: now(),
+    isSystem: input.isSystem || false,
+    createdAt: new Date().toISOString(),
   };
 
-  const messages = messagesByRoom.get(input.roomId) ?? [];
-  messages.push(message);
-
-  if (messages.length > 500) {
-    messages.splice(0, messages.length - 500);
+  const roomMsgs = inMemoryMessages.get(input.roomId) || [];
+  roomMsgs.push(message);
+  
+  // Keep only the last 100 messages in memory
+  if (roomMsgs.length > 100) {
+    roomMsgs.shift();
   }
+  
+  inMemoryMessages.set(input.roomId, roomMsgs);
 
-  messagesByRoom.set(input.roomId, messages);
   subscribersByRoom.get(input.roomId)?.forEach((callback) => callback(message));
+  
   return message;
 };
 

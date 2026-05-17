@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-export type AuthRole = "guest" | "member" | "admin";
+export type AuthRole = "guest" | "member" | "moderator" | "admin" | "owner";
 
 let memberSequence = 100;
 

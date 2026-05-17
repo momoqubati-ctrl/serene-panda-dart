@@ -15,11 +15,11 @@ const MOCK_STORIES = [
 
 const StoriesBar = () => {
   return (
-    <div className="bg-white border-b border-slate-100 py-3 px-2 overflow-x-auto flex gap-3 no-scrollbar shrink-0 ltr">
+    <div className="bg-card border-b border-border py-3 px-2 overflow-x-auto flex gap-3 no-scrollbar shrink-0 ltr">
       {/* Add Story */}
       <div className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group">
         <div className="relative">
-          <Avatar className="w-12 h-12 border-2 border-slate-100 p-0.5 group-hover:border-primary transition-colors">
+          <Avatar className="w-12 h-12 border-2 border-border p-0.5 group-hover:border-primary transition-colors">
             <AvatarImage src="https://i.pravatar.cc/150?u=me" />
             <AvatarFallback>أنا</AvatarFallback>
           </Avatar>
@@ -27,19 +27,19 @@ const StoriesBar = () => {
             <Plus size={10} strokeWidth={4} />
           </div>
         </div>
-        <span className="text-[9px] font-bold text-slate-400">Story</span>
+        <span className="text-[9px] font-bold text-muted-foreground">Story</span>
       </div>
 
       {/* Friends Stories */}
       {MOCK_STORIES.map((story) => (
         <div key={story.id} className="flex flex-col items-center gap-1 shrink-0 cursor-pointer group">
-          <div className={`rounded-full p-0.5 border-2 transition-transform group-hover:scale-105 ${story.viewed ? 'border-slate-200' : 'border-primary'}`}>
+          <div className={`rounded-full p-0.5 border-2 transition-transform group-hover:scale-105 ${story.viewed ? 'border-border' : 'border-primary'}`}>
             <Avatar className="w-12 h-12 border-2 border-white">
               <AvatarImage src={story.avatar} />
               <AvatarFallback>{story.name[0]}</AvatarFallback>
             </Avatar>
           </div>
-          <span className="text-[9px] font-bold text-slate-500 truncate w-12 text-center">{story.name}</span>
+          <span className="text-[9px] font-bold text-muted-foreground truncate w-12 text-center">{story.name}</span>
         </div>
       ))}
     </div>

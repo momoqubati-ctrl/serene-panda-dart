@@ -16,13 +16,13 @@ const NotificationCenter = () => {
   return (
     <div className="p-4 space-y-4 pb-24 rtl">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="font-bold text-slate-800">التنبيهات الأخيرة</h3>
+        <h3 className="font-bold text-foreground">التنبيهات الأخيرة</h3>
         <button className="text-xs text-primary font-bold">تحديد الكل كمقروء</button>
       </div>
 
       <div className="space-y-3">
         {MOCK_NOTIFICATIONS.map((notif) => (
-          <Card key={notif.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:bg-slate-50 transition-colors cursor-pointer">
+          <Card key={notif.id} className="border-none shadow-sm rounded-2xl overflow-hidden hover:bg-muted transition-colors cursor-pointer">
             <CardContent className="p-4">
               <div className="flex gap-3">
                 <div className="relative">
@@ -30,16 +30,16 @@ const NotificationCenter = () => {
                     <AvatarImage src={`https://i.pravatar.cc/150?u=${notif.id + 10}`} />
                     <AvatarFallback>{notif.user[0]}</AvatarFallback>
                   </Avatar>
-                  <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-sm border">
+                  <div className="absolute -bottom-1 -right-1 bg-card p-1 rounded-full shadow-sm border">
                     {notif.icon}
                   </div>
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
-                    <h4 className="text-sm font-bold text-slate-900">{notif.user}</h4>
-                    <span className="text-[10px] text-slate-400">{notif.time}</span>
+                    <h4 className="text-sm font-bold text-foreground">{notif.user}</h4>
+                    <span className="text-[10px] text-muted-foreground">{notif.time}</span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1">{notif.content}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{notif.content}</p>
                 </div>
               </div>
             </CardContent>
@@ -48,7 +48,7 @@ const NotificationCenter = () => {
       </div>
 
       <div className="text-center pt-4">
-        <p className="text-[10px] text-slate-400 font-medium">لا يوجد المزيد من التنبيهات</p>
+        <p className="text-[10px] text-muted-foreground font-medium">لا يوجد المزيد من التنبيهات</p>
       </div>
     </div>
   );

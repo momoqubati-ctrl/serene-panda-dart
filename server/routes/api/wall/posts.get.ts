@@ -1,4 +1,4 @@
-import { defineEventHandler } from "nitro";
+import { defineEventHandler } from "h3";
 import { listWallPosts } from "../../../services/wallService";
 
 export default defineEventHandler(async () => {

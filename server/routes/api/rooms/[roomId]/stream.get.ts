@@ -1,7 +1,7 @@
 import { createEventStream, defineEventHandler, getRouterParam, setResponseStatus } from "h3";
 import { listMessages, subscribeToRoom } from "../../../../services/chatStore";
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const roomId = getRouterParam(event, "roomId");
 
   if (!roomId) {
@@ -14,7 +14,8 @@ export default defineEventHandler((event) => {
 
   const eventStream = createEventStream(event);
 
-  listMessages(roomId).forEach((message) => {
+  const messages = await listMessages(roomId);
+  messages.forEach((message) => {
     eventStream.push(JSON.stringify({ type: "message", message }));
   });
 

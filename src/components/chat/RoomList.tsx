@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Users, Lock, Mic2, Heart, Search, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { getSocket } from "@/lib/socket";
 
 type Room = {
   id: string;
@@ -50,8 +51,27 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
     };
 
     loadRooms();
+
+    // تحديث أعداد الأعضاء من Socket.io كل 5 ثوانٍ
+    const socket = getSocket();
+    const refreshCounts = () => {
+      socket.emit("get_rooms", (res: any) => {
+        if (res?.success && !ignore) {
+          setRooms((prev) =>
+            prev.map((room) => {
+              const updated = res.rooms?.find((r: any) => r.id === room.id);
+              return updated ? { ...room, members: updated.members } : room;
+            }),
+          );
+        }
+      });
+    };
+
+    const interval = setInterval(refreshCounts, 5000);
+
     return () => {
       ignore = true;
+      clearInterval(interval);
     };
   }, []);
 
@@ -62,12 +82,12 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
   }, [rooms, searchQuery]);
 
   return (
-    <div className="flex h-full flex-col bg-white [direction:ltr]">
+    <div className="flex h-full flex-col bg-card [direction:ltr]">
       <div className="flex items-center gap-1.5 bg-[#2c3e50] p-1.5">
         <div className="relative flex-1">
           <Input
             placeholder="ابحث عن غرفة"
-            className="h-7 rounded-md border-none bg-white/10 pl-7 text-[10px] text-white placeholder:text-white/60"
+            className="h-7 rounded-md border-none bg-card/10 pl-7 text-[10px] text-white placeholder:text-white/60"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -80,7 +100,7 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
 
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
         {isLoading && (
-          <div className="flex h-24 items-center justify-center text-slate-400">
+          <div className="flex h-24 items-center justify-center text-muted-foreground">
             <Loader2 className="animate-spin" size={18} />
           </div>
         )}
@@ -92,7 +112,7 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
         )}
 
         {!isLoading && !error && filteredRooms.length === 0 && (
-          <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-center text-xs font-bold text-slate-500" dir="rtl">
+          <div className="rounded-lg border border-border bg-muted p-3 text-center text-xs font-bold text-muted-foreground" dir="rtl">
             لا توجد غرف مطابقة
           </div>
         )}
@@ -101,7 +121,7 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
           <button
             key={room.id}
             onClick={() => onSelectRoom(room)}
-            className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border-b border-slate-50 p-2 text-left transition-all hover:bg-slate-100 [direction:ltr]"
+            className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border-b border-border/50 p-2 text-left transition-all hover:bg-slate-100 [direction:ltr]"
             type="button"
           >
             <div className="relative shrink-0">
@@ -114,7 +134,7 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-0.5 flex items-center justify-between">
-                <h4 className="truncate text-xs font-black text-slate-800" dir="rtl">
+                <h4 className="truncate text-xs font-black text-foreground" dir="rtl">
                   {room.name}
                 </h4>
                 <div className="flex items-center gap-1 text-pink-500">
@@ -124,11 +144,11 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5 text-slate-400">
+                  <div className="flex items-center gap-0.5 text-muted-foreground">
                     <Users size={10} />
                     <span className="text-[9px] font-bold">{room.members}</span>
                   </div>
-                  <div className="flex items-center gap-0.5 text-slate-400">
+                  <div className="flex items-center gap-0.5 text-muted-foreground">
                     <Mic2 size={10} />
                     <span className="text-[9px] font-bold">{room.mics}</span>
                   </div>

@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  const message = addMessage({
+  const message = await addMessage({
     roomId,
     clientId: typeof body.clientId === "string" ? body.clientId : undefined,
     user: typeof body.user === "string" ? body.user : undefined,

@@ -1,0 +1,1075 @@
+{
+  "source": {
+    "path": "C:\\xampp\\htdocs\\chetos216-08-2024\\database\\database٥‏-٥‏-٢٠٢٦.sql",
+    "name": "database٥‏-٥‏-٢٠٢٦.sql",
+    "database": "safarihost",
+    "dumpCompletedAt": "2026-05-05T22:23:59",
+    "sha256": "85c1f66e40416c1bdd4bc4063751e257380fb67bc958304d3e916e4bcbf16e6b"
+  },
+  "counts": {
+    "tables": 39,
+    "columns": 419,
+    "rows": 945,
+    "mappingRows": 879
+  },
+  "gaps": {
+    "missingTables": [],
+    "missingColumns": [],
+    "documentedButMissingTables": [],
+    "targetGaps": []
+  },
+  "tables": [
+    {
+      "name": "agent_payment_methods",
+      "columnCount": 10,
+      "columns": [
+        "id",
+        "agent_id",
+        "method_name",
+        "account_name",
+        "account_identifier",
+        "instructions",
+        "is_active",
+        "sort_order",
+        "created_at",
+        "updated_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "agent_payment_methods"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "agent_wallet_ledger",
+      "columnCount": 15,
+      "columns": [
+        "id",
+        "txid",
+        "agent_id",
+        "event_type",
+        "amount",
+        "before_balance",
+        "after_balance",
+        "actor_type",
+        "actor_id",
+        "counterparty_type",
+        "counterparty_id",
+        "note",
+        "reference_table",
+        "reference_id",
+        "created_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "wallet_ledger"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "agent_wallets",
+      "columnCount": 7,
+      "columns": [
+        "id",
+        "agent_id",
+        "balance_coins",
+        "reserved_coins",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "wallets"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "agents",
+      "columnCount": 15,
+      "columns": [
+        "id",
+        "code",
+        "name",
+        "country_code",
+        "city",
+        "phone",
+        "username",
+        "password_hash",
+        "status",
+        "commission_type",
+        "commission_value",
+        "can_receive_orders",
+        "notes",
+        "created_at",
+        "updated_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "agents",
+        "users",
+        "legacy_metadata"
+      ],
+      "strategy": "typed + blocked password reuse"
+    },
+    {
+      "name": "band",
+      "columnCount": 9,
+      "columns": [
+        "id",
+        "name_band",
+        "type",
+        "deccode",
+        "decoderDans",
+        "device_band",
+        "ip_band",
+        "country_band",
+        "date"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "moderation_bans",
+        "moderation_events"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "bars",
+      "columnCount": 12,
+      "columns": [
+        "id",
+        "bcc",
+        "likes",
+        "bg",
+        "bid",
+        "lid",
+        "mcol",
+        "msg",
+        "pic",
+        "topic",
+        "ucol",
+        "uid"
+      ],
+      "rowCount": 24,
+      "targets": [
+        "wall_posts",
+        "wall_comments",
+        "wall_post_likes"
+      ],
+      "strategy": "normalized + metadata"
+    },
+    {
+      "name": "bots",
+      "columnCount": 10,
+      "columns": [
+        "idreg",
+        "msg",
+        "pic",
+        "power",
+        "country",
+        "room",
+        "ip",
+        "id",
+        "stat",
+        "topic"
+      ],
+      "rowCount": 501,
+      "targets": [
+        "chat_bots"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "bsb",
+      "columnCount": 3,
+      "columns": [
+        "id",
+        "systems",
+        "browsers"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "site_settings",
+        "device_fingerprints"
+      ],
+      "strategy": "metadata"
+    },
+    {
+      "name": "coin_ledger",
+      "columnCount": 16,
+      "columns": [
+        "id",
+        "txid",
+        "event_type",
+        "actor_uid",
+        "actor_idreg",
+        "user_uid",
+        "user_idreg",
+        "counterparty_uid",
+        "counterparty_idreg",
+        "amount",
+        "before_balance",
+        "after_balance",
+        "gift_file",
+        "note",
+        "ip",
+        "created_at"
+      ],
+      "rowCount": 26,
+      "targets": [
+        "wallet_ledger",
+        "gift_notifications"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "coin_packages",
+      "columnCount": 12,
+      "columns": [
+        "id",
+        "title",
+        "coins_amount",
+        "price_local",
+        "currency",
+        "country_code",
+        "city",
+        "is_active",
+        "sort_order",
+        "notes",
+        "created_at",
+        "updated_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "coin_packages"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "cuts",
+      "columnCount": 3,
+      "columns": [
+        "id",
+        "text1",
+        "text2"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "shortcuts"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "followers",
+      "columnCount": 4,
+      "columns": [
+        "id",
+        "follower_id",
+        "following_id",
+        "created_at"
+      ],
+      "rowCount": 2,
+      "targets": [
+        "follows"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "gift_notifications",
+      "columnCount": 13,
+      "columns": [
+        "id",
+        "txid",
+        "to_uid",
+        "to_idreg",
+        "from_uid",
+        "from_idreg",
+        "from_topic",
+        "gift_file",
+        "coin",
+        "note",
+        "is_read",
+        "created_at",
+        "read_at"
+      ],
+      "rowCount": 13,
+      "targets": [
+        "gift_notifications"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "histletter",
+      "columnCount": 9,
+      "columns": [
+        "id",
+        "ip",
+        "msg",
+        "topic",
+        "v",
+        "time",
+        "target",
+        "source",
+        "path"
+      ],
+      "rowCount": 5,
+      "targets": [
+        "moderation_events",
+        "admin_audit_logs"
+      ],
+      "strategy": "archive"
+    },
+    {
+      "name": "hosts",
+      "columnCount": 3,
+      "columns": [
+        "id",
+        "hostname",
+        "setting"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "site_settings"
+      ],
+      "strategy": "metadata"
+    },
+    {
+      "name": "internal_mail",
+      "columnCount": 13,
+      "columns": [
+        "id",
+        "from_uid",
+        "from_username",
+        "from_topic",
+        "from_pic",
+        "to_uid",
+        "to_username",
+        "to_topic",
+        "to_pic",
+        "body",
+        "is_read",
+        "created_at",
+        "read_at"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "internal_mail"
+      ],
+      "strategy": "typed + snapshots"
+    },
+    {
+      "name": "intromsg",
+      "columnCount": 4,
+      "columns": [
+        "id",
+        "category",
+        "adresse",
+        "msg"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "intro_messages"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "logs",
+      "columnCount": 9,
+      "columns": [
+        "id",
+        "state",
+        "topic",
+        "username",
+        "ip",
+        "code",
+        "device",
+        "isin",
+        "time"
+      ],
+      "rowCount": 21,
+      "targets": [
+        "device_fingerprints",
+        "admin_audit_logs"
+      ],
+      "strategy": "archive + metadata"
+    },
+    {
+      "name": "names",
+      "columnCount": 6,
+      "columns": [
+        "id",
+        "iduser",
+        "fp",
+        "ip",
+        "topic",
+        "username"
+      ],
+      "rowCount": 32,
+      "targets": [
+        "device_fingerprints"
+      ],
+      "strategy": "archive"
+    },
+    {
+      "name": "notext",
+      "columnCount": 4,
+      "columns": [
+        "id",
+        "type",
+        "path",
+        "v"
+      ],
+      "rowCount": 5,
+      "targets": [
+        "moderation_filters"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "owner",
+      "columnCount": 13,
+      "columns": [
+        "id",
+        "bars",
+        "Vpn",
+        "Gust",
+        "datafinish",
+        "MaxRep",
+        "Tv",
+        "Vistor",
+        "room",
+        "isbanner",
+        "rc",
+        "cooment",
+        "offline"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "site_settings"
+      ],
+      "strategy": "typed settings + metadata"
+    },
+    {
+      "name": "owner_agent_transfers",
+      "columnCount": 12,
+      "columns": [
+        "id",
+        "txid",
+        "agent_id",
+        "coins_amount",
+        "settlement_amount_local",
+        "currency",
+        "status",
+        "note",
+        "created_by",
+        "approved_by",
+        "created_at",
+        "approved_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "topup_settlement_ledger",
+        "wallet_ledger"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "powers",
+      "columnCount": 2,
+      "columns": [
+        "id",
+        "powers"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "roles",
+        "role_permissions"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "profile_visits",
+      "columnCount": 8,
+      "columns": [
+        "id",
+        "owner_id",
+        "visitor_id",
+        "visitor_name",
+        "visitor_pic",
+        "seen",
+        "time",
+        "visitor_type"
+      ],
+      "rowCount": 16,
+      "targets": [
+        "profile_visits"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "room_welcome_visits",
+      "columnCount": 7,
+      "columns": [
+        "id",
+        "room_id",
+        "identity_key",
+        "is_guest",
+        "first_seen",
+        "last_seen",
+        "visits"
+      ],
+      "rowCount": 13,
+      "targets": [
+        "room_welcome_visits"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "rooms",
+      "columnCount": 20,
+      "columns": [
+        "idroom",
+        "about",
+        "user",
+        "pass",
+        "id",
+        "owner",
+        "topic",
+        "pic",
+        "rmli",
+        "mic",
+        "welcome",
+        "broadcast",
+        "deleted",
+        "needpass",
+        "color",
+        "max",
+        "stage_count",
+        "stage_state",
+        "room_owner_meta",
+        "message_mode"
+      ],
+      "rowCount": 2,
+      "targets": [
+        "rooms",
+        "room_members",
+        "room_badges",
+        "room_badge_assignments"
+      ],
+      "strategy": "typed + normalized + metadata"
+    },
+    {
+      "name": "settings",
+      "columnCount": 11,
+      "columns": [
+        "id",
+        "site",
+        "dro3",
+        "them",
+        "cover",
+        "emo",
+        "sico",
+        "room_badges",
+        "site_badges",
+        "gifts_git",
+        "gift_categories"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "site_settings",
+        "site_assets",
+        "room_badges",
+        "site_badges",
+        "gifts"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "site",
+      "columnCount": 5,
+      "columns": [
+        "id",
+        "banner",
+        "host",
+        "ids",
+        "logo"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "site_settings",
+        "site_assets"
+      ],
+      "strategy": "typed settings + metadata"
+    },
+    {
+      "name": "site_master_wallet",
+      "columnCount": 7,
+      "columns": [
+        "id",
+        "site_id",
+        "balance_coins",
+        "reserved_coins",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "wallets"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "site_master_wallet_ledger",
+      "columnCount": 15,
+      "columns": [
+        "id",
+        "txid",
+        "site_id",
+        "event_type",
+        "amount",
+        "before_balance",
+        "after_balance",
+        "actor_type",
+        "actor_id",
+        "counterparty_type",
+        "counterparty_id",
+        "note",
+        "reference_table",
+        "reference_id",
+        "created_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "wallet_ledger"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "stats",
+      "columnCount": 7,
+      "columns": [
+        "id",
+        "state",
+        "topic",
+        "username",
+        "room",
+        "ip",
+        "time"
+      ],
+      "rowCount": 134,
+      "targets": [
+        "admin_audit_logs"
+      ],
+      "strategy": "archive"
+    },
+    {
+      "name": "storie",
+      "columnCount": 9,
+      "columns": [
+        "id",
+        "sid",
+        "photo",
+        "name",
+        "link",
+        "lastUpdated",
+        "item",
+        "seen",
+        "currentPreview"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "stories"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "storieview",
+      "columnCount": 7,
+      "columns": [
+        "id",
+        "sid",
+        "topic",
+        "photo",
+        "idsto",
+        "item",
+        "time"
+      ],
+      "rowCount": 4,
+      "targets": [
+        "story_views"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "sub",
+      "columnCount": 8,
+      "columns": [
+        "id",
+        "iduser",
+        "sub",
+        "topic",
+        "topic1",
+        "timestart",
+        "timefinish",
+        "timeis"
+      ],
+      "rowCount": 1,
+      "targets": [
+        "subscriptions",
+        "user_role_assignments"
+      ],
+      "strategy": "normalized"
+    },
+    {
+      "name": "top10wall",
+      "columnCount": 5,
+      "columns": [
+        "id",
+        "uid",
+        "otype",
+        "pic",
+        "topic"
+      ],
+      "rowCount": 128,
+      "targets": [
+        "wall_activity_events"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "topup_order_events",
+      "columnCount": 10,
+      "columns": [
+        "id",
+        "order_id",
+        "order_no",
+        "event_type",
+        "old_status",
+        "new_status",
+        "actor_type",
+        "actor_id",
+        "note",
+        "created_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "topup_order_events"
+      ],
+      "strategy": "typed"
+    },
+    {
+      "name": "topup_orders",
+      "columnCount": 39,
+      "columns": [
+        "id",
+        "order_no",
+        "user_uid",
+        "user_idreg",
+        "user_topic",
+        "user_username",
+        "agent_id",
+        "agent_code",
+        "agent_name",
+        "agent_phone",
+        "agent_country_code",
+        "agent_city",
+        "package_id",
+        "package_title",
+        "package_coins",
+        "package_price_local",
+        "customer_price_local",
+        "agent_profit_local",
+        "agent_commission_type",
+        "agent_commission_value",
+        "currency",
+        "package_country_code",
+        "package_city",
+        "payment_method_id",
+        "payment_method_name",
+        "payment_method_account_name",
+        "payment_method_identifier",
+        "receipt_path",
+        "receipt_uploaded_at",
+        "payment_reference",
+        "payment_note",
+        "status",
+        "processed_by",
+        "processed_note",
+        "reject_reason",
+        "requested_at",
+        "processed_at",
+        "source_ip",
+        "agent_commission_coins"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "topup_orders",
+        "topup_order_events"
+      ],
+      "strategy": "typed + snapshots"
+    },
+    {
+      "name": "topup_settlement_ledger",
+      "columnCount": 19,
+      "columns": [
+        "id",
+        "txid",
+        "order_id",
+        "order_no",
+        "event_type",
+        "agent_id",
+        "agent_name",
+        "user_uid",
+        "user_idreg",
+        "package_id",
+        "package_title",
+        "package_coins",
+        "currency",
+        "customer_price_local",
+        "site_share_local",
+        "agent_profit_local",
+        "processed_by",
+        "note",
+        "created_at"
+      ],
+      "rowCount": 0,
+      "targets": [
+        "topup_settlement_ledger"
+      ],
+      "strategy": "typed + metadata"
+    },
+    {
+      "name": "users",
+      "columnCount": 38,
+      "columns": [
+        "idreg",
+        "bg",
+        "mcol",
+        "ucol",
+        "evaluation",
+        "ico",
+        "ip",
+        "fp",
+        "id",
+        "lid",
+        "uid",
+        "msg",
+        "pic",
+        "pich",
+        "power",
+        "rep",
+        "topic",
+        "username",
+        "password",
+        "token",
+        "youtub",
+        "them",
+        "cover",
+        "loginG",
+        "muted",
+        "documentationc",
+        "lastssen",
+        "joinuser",
+        "site_badge_id",
+        "site_badge",
+        "coins",
+        "gift_ico",
+        "gcol",
+        "last_eval_login_day",
+        "auto_power",
+        "wall_post_likes",
+        "gifts_received_count",
+        "eval_awards_json"
+      ],
+      "rowCount": 7,
+      "targets": [
+        "users",
+        "user_profiles",
+        "wallets",
+        "roles",
+        "device_fingerprints",
+        "legacy_metadata"
+      ],
+      "strategy": "typed + normalized + blocked password reuse"
+    }
+  ],
+  "jsonDiagnostics": [
+    {
+      "table": "bars",
+      "column": "bcc",
+      "checked": 24,
+      "valid": 24,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "bars",
+      "column": "likes",
+      "checked": 24,
+      "valid": 24,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "bsb",
+      "column": "systems",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "bsb",
+      "column": "browsers",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "powers",
+      "column": "powers",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "rooms",
+      "column": "stage_state",
+      "checked": 2,
+      "valid": 2,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "rooms",
+      "column": "room_owner_meta",
+      "checked": 2,
+      "valid": 2,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "site",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "dro3",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "them",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "cover",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "emo",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "sico",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "room_badges",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "site_badges",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "gifts_git",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "settings",
+      "column": "gift_categories",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "storie",
+      "column": "item",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "storie",
+      "column": "currentPreview",
+      "checked": 1,
+      "valid": 1,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "users",
+      "column": "site_badge",
+      "checked": 2,
+      "valid": 2,
+      "invalid": 0,
+      "note": ""
+    },
+    {
+      "table": "users",
+      "column": "eval_awards_json",
+      "checked": 3,
+      "valid": 3,
+      "invalid": 0,
+      "note": ""
+    }
+  ],
+  "mojibakeFindings": [
+    {
+      "table": "logs",
+      "column": "state",
+      "sampleRow": 20,
+      "valuePreview": "ط¹ط¶ظˆ"
+    }
+  ]
+}
