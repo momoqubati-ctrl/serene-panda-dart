@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { loginMember } from "../../../services/authService";
+import { logAccess } from "../../../services/accessLogger";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -16,7 +17,16 @@ export default defineEventHandler(async (event) => {
     }
 
     const result = await loginMember({ username, password });
+    
     if (!result.ok) {
+      // تسجيل محاولة تخمين
+      await logAccess({
+        event,
+        state: "تخمين باسورد",
+        username: username.trim(),
+        topic: username.trim()
+      });
+
       setResponseStatus(event, 401);
       return {
         success: false,
@@ -24,6 +34,14 @@ export default defineEventHandler(async (event) => {
         message: result.message,
       };
     }
+
+    // تسجيل دخول ناجح
+    await logAccess({
+      event,
+      state: "دخول",
+      username: result.session.user.username,
+      topic: result.session.user.name
+    });
 
     return {
       success: true,
