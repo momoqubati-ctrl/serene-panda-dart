@@ -1,0 +1,113 @@
+export const FIELD_TRANSLATIONS: Record<string, string> = {
+  idreg: "المعرف الرقمي",
+  idroom: "رقم الغرفة",
+  topic: "العنوان/الاسم",
+  msg: "الرسالة/الوصف",
+  pic: "الصورة",
+  pich: "الغلاف",
+  power: "الرتبة",
+  muted: "مكتوم",
+  lastssen: "آخر ظهور",
+  joinuser: "تاريخ الانضمام",
+  v: "القيمة/الكلمة",
+  path: "المسار/النطاق",
+  stat: "الحالة",
+  ip: "عنوان IP",
+  fp: "بصمة الجهاز",
+  coins: "العملات",
+  evaluation: "النقاط",
+  rep: "الإعجابات",
+  about: "عن الغرفة",
+  max: "السعة القصوى",
+  mic: "المايكات",
+  needpass: "بكلمة سر",
+  broadcast: "بث عام",
+};
+
+export const PERMISSION_TRANSLATIONS: Record<string, string> = {
+  ban: "حظر الأعضاء",
+  cp: "دخول لوحة التحكم",
+  msgs: "إدارة الرسائل",
+  kick: "طرد الأعضاء",
+  subs: "إدارة الاشتراكات",
+  shrt: "إدارة الاختصارات",
+  delbc: "حذف منشورات الحائط",
+  alert: "إرسال تنبيهات",
+  loveu: "إعطاء إعجابات",
+  flter: "إدارة الفلتر",
+  owner: "صلاحيات المالك",
+  meiut: "كتم الأعضاء",
+  ulike: "إعجابات غير محدودة",
+  rooms: "إدارة الغرف",
+  gift: "إرسال هدايا",
+  eval: "تعديل النقاط",
+  priv: "محادثات خاصة",
+  mic: "استخدام المايك",
+  cam: "استخدام الكاميرا",
+  upic: "تغيير الصورة",
+  unm: "تغيير الاسم",
+  upro: "تعديل الملف الشخصي",
+  brbbot: "بوت الرد التلقائي",
+  delpic: "حذف صور الأعضاء",
+  mynick: "زخرفة الاسم الشخصي",
+  history: "سجل الرسائل",
+  bootedit: "تعديل بيانات الطرد",
+  setpower: "تعيين الرتب",
+  publicmsg: "رسائل عامة (إعلان)",
+  unick: "تغيير أسماء الأعضاء",
+  delmsg: "حذف الرسائل",
+  grupes: "إدارة المجموعات",
+  forcepm: "فتح خاص إجباري",
+  stealth: "وضع التخفي",
+  edituser: "تعديل بيانات العضو",
+  upgrades: "إدارة الترقيات",
+};
+
+export const LEGACY_CP_SECTIONS: Record<string, {
+  title: string;
+  description: string;
+  tables: string[];
+  actions?: string[];
+}> = {
+  actions: {
+    title: "سجل الحالات",
+    description: "متابعة تحركات الإدارة والتنبيهات اللحظية.",
+    tables: ["stats", "histletter"],
+  },
+  bans: {
+    title: "إدارة الحظر",
+    description: "التحكم في قائمة المحظورين من الأسماء والأجهزة والدول.",
+    tables: ["band", "bsb", "names"],
+    actions: ["إضافة حظر جديد", "تطهير السجلات"],
+  },
+  roomBadges: {
+    title: "أوسمة الغرف",
+    description: "إدارة الشارات الخاصة بملاك ومشرفي الغرف.",
+    tables: ["room_badges", "room_badge_assignments"],
+  },
+  siteBadges: {
+    title: "أوسمة الموقع",
+    description: "إدارة الأوسمة العامة التي تظهر في ملفات الأعضاء.",
+    tables: ["site_badges"],
+  },
+  shrt: {
+    title: "الاختصارات",
+    description: "إدارة الكلمات المختصرة والردود الجاهزة.",
+    tables: ["cuts"],
+  },
+  msgs: {
+    title: "مركز الرسائل",
+    description: "الرسائل الترحيبية والبريد الإداري الداخلي.",
+    tables: ["intromsg", "internal_mail"],
+  },
+  giftsgit: {
+    title: "متجر الهدايا",
+    description: "إدارة أيقونات وأسعار الهدايا المتاحة للإرسال.",
+    tables: ["gifts", "gift_categories"],
+  },
+  agentwallets: {
+    title: "نظام الوكلاء",
+    description: "إدارة حسابات الشحن والتحويلات المالية للوكلاء.",
+    tables: ["agents", "coin_packages", "topup_orders"],
+  },
+};
