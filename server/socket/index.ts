@@ -7,6 +7,7 @@ import type { Server as HttpServer } from "node:http";
 import { registerRoomHandlers } from "./roomHandlers";
 import { registerPresenceHandlers } from "./presenceHandlers";
 import { registerPrivateHandlers } from "./privateHandlers";
+import { configureSocketGateway, registerSocketConnection } from "./SocketGateway";
 
 let io: SocketIOServer | null = null;
 
@@ -34,6 +35,8 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
     },
   });
 
+  configureSocketGateway(io, { shardId: process.env.SOCKET_SHARD_ID ?? "local" });
+
   io.on("connection", (socket) => {
     const username = socket.handshake.auth?.username || "زائر";
     const role = socket.handshake.auth?.role || "guest";
@@ -53,6 +56,7 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
     };
 
     // تسجيل أحداث الغرف
+    registerSocketConnection(socket, { shardId: process.env.SOCKET_SHARD_ID ?? "local" });
     registerRoomHandlers(io!, socket);
     // تسجيل أحداث الحضور
     registerPresenceHandlers(io!, socket);

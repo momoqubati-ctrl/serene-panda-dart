@@ -3,8 +3,8 @@
 import React from 'react';
 import { useRealtimeStore } from '@/lib/realtime-store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
+import { ar } from 'date-fns/locale/ar';
 import { Heart, UserPlus, LogIn, Gift, MessageSquare } from 'lucide-react';
 
 const ActivityFeed = () => {

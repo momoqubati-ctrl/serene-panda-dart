@@ -6,12 +6,15 @@ import type { Server, Socket } from "socket.io";
 import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount, getConnectedUser } from "./presenceManager";
 import { listRooms, addMessage, listMessages } from "../services/chatStore";
 import { processText } from "../services/filterService";
+import { eventBus } from "../core/events/EventBus";
+import { bootstrapWorkers } from "../workers";
 
 const TYPING_THROTTLE_MS = 900;
 const typingTimers = new Map<string, NodeJS.Timeout>();
 
 export function registerRoomHandlers(io: Server, socket: Socket): void {
   const user = socket.data.user;
+  bootstrapWorkers();
 
   // الانضمام لغرفة تنبيهات المشرفين إذا كان يملك الصلاحية
   if (user.role === 'admin' || user.role === 'owner') {
@@ -32,6 +35,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     if (previousRoomId && previousRoomId !== roomId) {
       socket.leave(`room:${previousRoomId}`);
       leaveRoom(socket.id);
+      void eventBus.publish({
+        type: "room.left",
+        stream: "rooms",
+        actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
+        target: { id: previousRoomId, type: "room", roomId: previousRoomId },
+        payload: { roomId: previousRoomId, username: user.username },
+        metadata: { roomId: previousRoomId, source: "socket.roomHandlers", shardKey: previousRoomId },
+      });
       io.to(`room:${previousRoomId}`).emit("user_left", {
         socketId: socket.id,
         username: user.username,
@@ -42,6 +53,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
     socket.join(`room:${roomId}`);
     joinRoom(socket.id, roomId);
+    void eventBus.publish({
+      type: "room.joined",
+      stream: "rooms",
+      actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
+      target: { id: roomId, type: "room", roomId },
+      payload: { roomId, username: user.username },
+      metadata: { roomId, source: "socket.roomHandlers", shardKey: roomId },
+    });
 
     const members = getRoomMembers(roomId);
     const messages = listMessages(roomId);
@@ -141,6 +160,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   socket.on("disconnect", () => {
     const currentUser = getConnectedUser(socket.id);
     if (currentUser?.roomId) {
+      void eventBus.publish({
+        type: "room.left",
+        stream: "rooms",
+        actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
+        target: { id: currentUser.roomId, type: "room", roomId: currentUser.roomId },
+        payload: { roomId: currentUser.roomId, username: user.username, disconnected: true },
+        metadata: { roomId: currentUser.roomId, source: "socket.roomHandlers.disconnect", shardKey: currentUser.roomId },
+      });
       io.to(`room:${currentUser.roomId}`).emit("user_left", {
         socketId: socket.id,
         username: user.username,

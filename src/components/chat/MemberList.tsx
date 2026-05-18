@@ -26,6 +26,16 @@ type OnlineMember = {
   roomId?: string;
 };
 
+const getMemberIdentity = (member: { id?: string; username?: string; name?: string; role?: string }) => {
+  const id = String(member.id || "").trim();
+  if (id && id !== "0") return `id:${id}`;
+
+  const name = String(member.username || member.name || "").trim().toLowerCase();
+  if (name && member.role !== "guest") return `username:${name}`;
+
+  return `guest:${name}`;
+};
+
 const getCurrentMember = () => {
   try {
     const raw = localStorage.getItem("user");
@@ -147,15 +157,19 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   // تحويل المتصلين لعناصر العرض
   const members = useMemo(() => {
     const membersList: any[] = [];
+    const seen = new Set<string>();
 
     // المستخدم الحالي أولاً
     if (currentMember) {
       membersList.push(currentMember);
+      seen.add(getMemberIdentity(currentMember));
     }
 
     // المستخدمون المتصلون (بدون تكرار الحالي)
     for (const user of onlineUsers) {
-      if (currentMember && user.id === currentMember.id) continue;
+      const identity = getMemberIdentity(user);
+      if (seen.has(identity)) continue;
+      seen.add(identity);
 
       membersList.push({
         id: user.id,
@@ -228,7 +242,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {members.filter(m => m.name.includes(searchQuery)).map((member, index) => (
           <div 
-            key={`${member.id}-${index}`} 
+            key={`${getMemberIdentity(member)}-${member.id || index}`} 
             onClick={() => setSelectedUser(member)}
             className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-all cursor-pointer border-b border-border/50 [direction:ltr]"
           >

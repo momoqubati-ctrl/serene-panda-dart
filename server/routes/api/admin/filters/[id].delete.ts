@@ -1,6 +1,6 @@
 import { defineEventHandler, getRouterParam, setResponseStatus } from "h3";
-import { dbPool } from "../../../db";
-import { guardAdminAction, logAdminAudit } from "../../../services/adminPermissions";
+import { dbPool } from "../../../../db";
+import { guardAdminAction, logAdminAudit } from "../../../../services/adminPermissions";
 
 export default defineEventHandler(async (event) => {
   try {

@@ -23,6 +23,36 @@ const connectedUsers = new Map<string, OnlineUser>();
 // أعضاء كل غرفة: roomId → Set<socketId>
 const roomMembers = new Map<string, Set<string>>();
 
+function getPresenceIdentity(user: Pick<OnlineUser, "id" | "username" | "role">): string {
+  const id = String(user.id || "").trim();
+  if (id && id !== "0") return `id:${id}`;
+
+  const username = String(user.username || "").trim().toLowerCase();
+  if (username && user.role !== "guest") return `username:${username}`;
+
+  return "";
+}
+
+function getDedupedOnlineUsers(): OnlineUser[] {
+  const byIdentity = new Map<string, OnlineUser>();
+  const guests: OnlineUser[] = [];
+
+  for (const user of connectedUsers.values()) {
+    const identity = getPresenceIdentity(user);
+    if (!identity) {
+      guests.push(user);
+      continue;
+    }
+
+    const existing = byIdentity.get(identity);
+    if (!existing || new Date(user.connectedAt).getTime() > new Date(existing.connectedAt).getTime()) {
+      byIdentity.set(identity, user);
+    }
+  }
+
+  return [...byIdentity.values(), ...guests];
+}
+
 /**
  * يضيف مستخدم متصل
  */
@@ -119,14 +149,14 @@ export function getRoomMemberCount(roomId: string): number {
  * يحصل على كل المستخدمين المتصلين
  */
 export function getAllOnlineUsers(): OnlineUser[] {
-  return Array.from(connectedUsers.values());
+  return getDedupedOnlineUsers();
 }
 
 /**
  * يحصل على عدد المتصلين الكلي
  */
 export function getTotalOnlineCount(): number {
-  return connectedUsers.size;
+  return getDedupedOnlineUsers().length;
 }
 
 /**

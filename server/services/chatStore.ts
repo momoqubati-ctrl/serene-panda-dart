@@ -1,5 +1,7 @@
 import { dbPool } from "../db/index";
 import { randomUUID } from "node:crypto";
+import { eventBus } from "../core/events/EventBus";
+import { bootstrapWorkers } from "../workers";
 
 export type ChatRoom = {
   id: string;
@@ -150,6 +152,34 @@ export const addMessage = (input: {
   inMemoryMessages.set(input.roomId, roomMsgs);
 
   subscribersByRoom.get(input.roomId)?.forEach((callback) => callback(message));
+
+  bootstrapWorkers();
+  void eventBus.publish({
+    type: "message.sent",
+    stream: "messages",
+    actor: {
+      username: message.user,
+      role: message.role,
+    },
+    target: {
+      id: message.id,
+      type: "message",
+      roomId: message.roomId,
+    },
+    payload: {
+      id: message.id,
+      clientId: message.clientId,
+      roomId: message.roomId,
+      text: message.text,
+      role: message.role,
+      createdAt: message.createdAt,
+    },
+    metadata: {
+      roomId: message.roomId,
+      source: "chatStore.addMessage",
+      shardKey: message.roomId,
+    },
+  });
   
   return message;
 };

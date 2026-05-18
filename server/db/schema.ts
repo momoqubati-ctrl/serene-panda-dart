@@ -272,3 +272,74 @@ export const wallPostLikes = pgTable("wall_post_likes", {
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [primaryKey({ columns: [table.postId, table.userId] })]);
+
+export const eventStore = pgTable("event_store", {
+  id: uuid("id").primaryKey(),
+  type: varchar("type", { length: 120 }).notNull(),
+  stream: varchar("stream", { length: 80 }).notNull(),
+  version: integer("version").default(1).notNull(),
+  actorId: varchar("actor_id", { length: 128 }),
+  targetId: varchar("target_id", { length: 128 }),
+  payload: jsonb("payload").default({}).notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  status: varchar("status", { length: 40 }).default("published").notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  persistedAt: timestamp("persisted_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("event_store_type_idx").on(table.type),
+  index("event_store_stream_idx").on(table.stream),
+  index("event_store_occurred_idx").on(table.occurredAt),
+]);
+
+export const eventSnapshots = pgTable("event_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  aggregateType: varchar("aggregate_type", { length: 80 }).notNull(),
+  aggregateId: varchar("aggregate_id", { length: 128 }).notNull(),
+  version: integer("version").default(1).notNull(),
+  state: jsonb("state").default({}).notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("event_snapshots_aggregate_idx").on(table.aggregateType, table.aggregateId, table.version),
+]);
+
+export const eventReplays = pgTable("event_replays", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requestedBy: uuid("requested_by").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 40 }).default("pending").notNull(),
+  filter: jsonb("filter").default({}).notNull(),
+  replayedCount: integer("replayed_count").default(0).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const socialClusters = pgTable("social_clusters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 120 }),
+  algorithm: varchar("algorithm", { length: 80 }).default("affinity_v1").notNull(),
+  score: numeric("score", { precision: 10, scale: 4 }).default("0").notNull(),
+  members: jsonb("members").default([]).notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const interactionHeat = pgTable("interaction_heat", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sourceId: varchar("source_id", { length: 128 }).notNull(),
+  targetId: varchar("target_id", { length: 128 }).notNull(),
+  scope: varchar("scope", { length: 40 }).default("user").notNull(),
+  heatScore: numeric("heat_score", { precision: 10, scale: 4 }).default("0").notNull(),
+  decayRate: numeric("decay_rate", { precision: 6, scale: 4 }).default("0.0500").notNull(),
+  lastInteractionAt: timestamp("last_interaction_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("interaction_heat_pair_idx").on(table.sourceId, table.targetId, table.scope),
+]);
+
+export const influenceScores = pgTable("influence_scores", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  roomInfluence: numeric("room_influence", { precision: 10, scale: 4 }).default("0").notNull(),
+  networkInfluence: numeric("network_influence", { precision: 10, scale: 4 }).default("0").notNull(),
+  trustPropagation: numeric("trust_propagation", { precision: 10, scale: 4 }).default("0").notNull(),
+  calculatedAt: timestamp("calculated_at", { withTimezone: true }).defaultNow().notNull(),
+});
