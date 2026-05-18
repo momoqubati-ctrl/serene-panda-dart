@@ -1,6 +1,4 @@
-import { db } from "../db/index";
-import { rooms } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { dbPool } from "../db/index";
 import { randomUUID } from "node:crypto";
 
 export type ChatRoom = {
@@ -34,46 +32,66 @@ export type ChatMessage = {
 };
 
 // In-memory message store: map of roomId -> array of messages
-// We keep max 100 messages per room in memory
 const inMemoryMessages = new Map<string, ChatMessage[]>();
 const subscribersByRoom = new Map<string, Set<(message: ChatMessage) => void>>();
 
-export const listRooms = async () => {
-  const dbRooms = await db.select().from(rooms).where(eq(rooms.isDeleted, false));
-  
-  if (dbRooms.length === 0) {
-    // Return default if none in DB yet
-    return [
-      {
-        id: "general",
-        name: "الغرفة العامة",
-        description: "أهلاً بكم في الغرفة العامة للجميع",
-        owner: "إدارة الموقع",
-        image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
-        members: 0, mics: 5, likes: 1000, locked: false,
-      },
-      {
-        id: "events",
-        name: "غرفة المسابقات",
-        description: "مسابقات وألعاب تفاعلية مباشرة",
-        owner: "المشرف الذهبي",
-        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
-        members: 0, mics: 3, likes: 500, locked: false,
-      }
-    ];
-  }
-
-  return dbRooms.map(r => ({
-    id: r.slug,
-    name: r.name,
-    description: r.description || "",
+const DEFAULT_ROOMS = [
+  {
+    id: "general",
+    name: "الغرفة العامة",
+    description: "أهلاً بكم في الغرفة العامة للجميع",
     owner: "إدارة الموقع",
-    image: r.avatarUrl || "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
-    members: 0,
-    mics: r.micSlots,
-    likes: 0,
-    locked: !r.isPublic,
-  }));
+    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
+    members: 0, mics: 5, likes: 1000, locked: false,
+  },
+  {
+    id: "events",
+    name: "غرفة المسابقات",
+    description: "مسابقات وألعاب تفاعلية مباشرة",
+    owner: "المشرف الذهبي",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
+    members: 0, mics: 3, likes: 500, locked: false,
+  }
+];
+
+export const listRooms = async () => {
+  try {
+    // محاولة جلب الغرف باستخدام الاستعلام المتوافق مع القاعدة القديمة
+    const result = await dbPool.query(`
+      SELECT 
+        idroom as "id",
+        id as "slug",
+        topic as "name",
+        about as "description",
+        owner,
+        pic as "image",
+        mic as "mics",
+        COALESCE(needpass, 0) != 0 as "locked"
+      FROM rooms 
+      WHERE COALESCE(deleted, 0) = 0
+      ORDER BY idroom ASC
+      LIMIT 100
+    `);
+
+    if (result.rowCount === 0) {
+      return DEFAULT_ROOMS;
+    }
+
+    return result.rows.map(r => ({
+      id: String(r.slug || r.id),
+      name: r.name || "غرفة بدون اسم",
+      description: r.description || "",
+      owner: r.owner || "إدارة الموقع",
+      image: r.image || "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop",
+      members: 0,
+      mics: Number(r.mics) || 0,
+      likes: 0,
+      locked: Boolean(r.locked),
+    }));
+  } catch (err) {
+    console.error("Failed to list rooms from DB, using defaults:", err);
+    return DEFAULT_ROOMS;
+  }
 };
 
 export const listMessages = (roomId: string, after?: string) => {
@@ -125,7 +143,6 @@ export const addMessage = (input: {
   const roomMsgs = inMemoryMessages.get(input.roomId) || [];
   roomMsgs.push(message);
   
-  // Keep only the last 100 messages in memory
   if (roomMsgs.length > 100) {
     roomMsgs.shift();
   }
