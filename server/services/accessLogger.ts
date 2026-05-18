@@ -8,6 +8,7 @@ export type LogState =
   | "تخمين باسورد" 
   | "دخول زائر" 
   | "تسجيل عضوية" 
+  | "عضوية مكررة"
   | "محاولة دخول محظور"
   | "تغيير اسم";
 
@@ -50,9 +51,6 @@ export const logAccess = async (params: LogParams) => {
         String(Date.now())
       ]
     );
-
-    // الحفاظ على آخر 150 سجل فقط (اختياري، لكنه يحاكي سلوك النظام القديم)
-    // سنتركه للـ Cron job أو عملية تنظيف دورية لاحقاً لضمان الأداء
   } catch (error) {
     console.error("Failed to write access log:", error);
   }

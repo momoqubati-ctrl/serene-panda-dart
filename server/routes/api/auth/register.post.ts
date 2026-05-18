@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { registerMember } from "../../../services/authService";
 import { detectCountryCode } from "../../../services/requestCountry";
+import { logAccess } from "../../../services/accessLogger";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -27,7 +28,18 @@ export default defineEventHandler(async (event) => {
     }
 
     const result = await registerMember({ username, password, countryCode });
+    
     if (!result.ok) {
+      if (result.code === "USERNAME_TAKEN") {
+        // تسجيل محاولة تسجيل باسم مستخدم مكرر
+        await logAccess({
+          event,
+          state: "عضوية مكررة",
+          username: username.trim(),
+          topic: username.trim()
+        });
+      }
+
       setResponseStatus(event, 409);
       return {
         success: false,
@@ -35,6 +47,14 @@ export default defineEventHandler(async (event) => {
         message: result.message,
       };
     }
+
+    // تسجيل نجاح إنشاء العضوية
+    await logAccess({
+      event,
+      state: "تسجيل عضوية",
+      username: result.session.user.username,
+      topic: result.session.user.name
+    });
 
     return {
       success: true,
