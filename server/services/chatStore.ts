@@ -154,7 +154,7 @@ export const addMessage = (input: {
   subscribersByRoom.get(input.roomId)?.forEach((callback) => callback(message));
 
   bootstrapWorkers();
-  void eventBus.publish({
+  eventBus.publish({
     type: "message.sent",
     stream: "messages",
     actor: {
@@ -179,7 +179,7 @@ export const addMessage = (input: {
       source: "chatStore.addMessage",
       shardKey: message.roomId,
     },
-  });
+  }).catch(err => console.error("EventBus publish failed in addMessage:", err));
   
   return message;
 };

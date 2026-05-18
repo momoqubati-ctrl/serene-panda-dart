@@ -35,14 +35,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     if (previousRoomId && previousRoomId !== roomId) {
       socket.leave(`room:${previousRoomId}`);
       leaveRoom(socket.id);
-      void eventBus.publish({
+      eventBus.publish({
         type: "room.left",
         stream: "rooms",
         actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
         target: { id: previousRoomId, type: "room", roomId: previousRoomId },
         payload: { roomId: previousRoomId, username: user.username },
         metadata: { roomId: previousRoomId, source: "socket.roomHandlers", shardKey: previousRoomId },
-      });
+      }).catch(err => console.error("EventBus publish failed (room.left):", err));
       io.to(`room:${previousRoomId}`).emit("user_left", {
         socketId: socket.id,
         username: user.username,
@@ -53,14 +53,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
     socket.join(`room:${roomId}`);
     joinRoom(socket.id, roomId);
-    void eventBus.publish({
+    eventBus.publish({
       type: "room.joined",
       stream: "rooms",
       actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
       target: { id: roomId, type: "room", roomId },
       payload: { roomId, username: user.username },
       metadata: { roomId, source: "socket.roomHandlers", shardKey: roomId },
-    });
+    }).catch(err => console.error("EventBus publish failed (room.joined):", err));
 
     const members = getRoomMembers(roomId);
     const messages = listMessages(roomId);
@@ -165,14 +165,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   socket.on("disconnect", () => {
     const currentUser = getConnectedUser(socket.id);
     if (currentUser?.roomId) {
-      void eventBus.publish({
+      eventBus.publish({
         type: "room.left",
         stream: "rooms",
         actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
         target: { id: currentUser.roomId, type: "room", roomId: currentUser.roomId },
         payload: { roomId: currentUser.roomId, username: user.username, disconnected: true },
         metadata: { roomId: currentUser.roomId, source: "socket.roomHandlers.disconnect", shardKey: currentUser.roomId },
-      });
+      }).catch(err => console.error("EventBus publish failed (room.left on disconnect):", err));
       io.to(`room:${currentUser.roomId}`).emit("user_left", {
         socketId: socket.id,
         username: user.username,
