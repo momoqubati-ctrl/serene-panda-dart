@@ -26,7 +26,12 @@ async function getRules() {
   }
 
   try {
-    const result = await dbPool.query("SELECT v, path FROM notext");
+    const queryPromise = dbPool.query("SELECT v, path FROM notext");
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Query timeout")), 2000)
+    );
+    const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+    
     cachedRules = result.rows;
     lastCacheTime = now;
     return cachedRules;
