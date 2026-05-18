@@ -100,46 +100,51 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
    * إرسال رسالة في غرفة (مع الفلترة)
    */
   socket.on("room_message", async (data: { roomId: string; text: string; clientId?: string }, callback?: (res: any) => void) => {
-    const roomId = String(data?.roomId || "").trim();
-    const text = String(data?.text || "").trim();
-    const clientId = data?.clientId;
+    try {
+      const roomId = String(data?.roomId || "").trim();
+      const text = String(data?.text || "").trim();
+      const clientId = data?.clientId;
 
-    if (!roomId || !text) {
-      callback?.({ success: false, message: "البيانات ناقصة" });
-      return;
-    }
-
-    // --- تطبيق الفلترة الذكية ---
-    const filterResult = await processText({
-      text,
-      source: roomId,
-      user: { 
-        username: user.username, 
-        topic: user.username, 
-        ip: socket.handshake.address || "127.0.0.1" 
+      if (!roomId || !text) {
+        callback?.({ success: false, message: "البيانات ناقصة" });
+        return;
       }
-    });
 
-    // إنشاء وحفظ الرسالة (باستخدام النص المفلتر)
-    const message = addMessage({
-      roomId,
-      clientId,
-      user: user.username,
-      role: user.role,
-      countryCode: user.countryCode,
-      avatar: user.avatar,
-      avatarFrameUrl: user.avatarFrameUrl,
-      giftIconUrl: user.giftIconUrl,
-      messageBubbleStyle: user.messageBubbleStyle,
-      text: filterResult.filteredText,
-    });
+      // --- تطبيق الفلترة الذكية ---
+      const filterResult = await processText({
+        text,
+        source: roomId,
+        user: {
+          username: user.username,
+          topic: user.username,
+          ip: socket.handshake.address || "127.0.0.1",
+        },
+      });
 
-    io.to(`room:${roomId}`).emit("new_message", {
-      roomId,
-      message,
-    });
+      // إنشاء وحفظ الرسالة (باستخدام النص المفلتر)
+      const message = addMessage({
+        roomId,
+        clientId,
+        user: user.username,
+        role: user.role,
+        countryCode: user.countryCode,
+        avatar: user.avatar,
+        avatarFrameUrl: user.avatarFrameUrl,
+        giftIconUrl: user.giftIconUrl,
+        messageBubbleStyle: user.messageBubbleStyle,
+        text: filterResult.filteredText,
+      });
 
-    callback?.({ success: true, message });
+      io.to(`room:${roomId}`).emit("new_message", {
+        roomId,
+        message,
+      });
+
+      callback?.({ success: true, message });
+    } catch (error) {
+      console.error("room_message failed:", error);
+      callback?.({ success: false, message: "تعذر إرسال الرسالة" });
+    }
   });
 
   socket.on("typing", (data: { roomId: string }) => {

@@ -1,42 +1,35 @@
-/**
- * Socket.io Client Manager
- * يدير اتصال WebSocket من الواجهة الأمامية
- */
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-/**
- * ينشئ أو يعيد اتصال Socket.io
- */
-export function getSocket(): Socket {
-  if (socket?.connected) return socket;
-
-  // قراءة بيانات المستخدم من localStorage
-  let auth: Record<string, string> = {};
+function readSocketAuth(): Record<string, string> {
   try {
     const raw = localStorage.getItem("user");
-    if (raw) {
-      const user = JSON.parse(raw);
-      auth = {
-        userId: user.id || "",
-        username: user.name || "زائر",
-        role: user.role || "guest",
-        avatar: user.avatar || "/pic.png",
-        countryCode: user.countryCode || "SA",
-        avatarFrameUrl: user.avatarFrameUrl || "",
-        giftIconUrl: user.giftIconUrl || "",
-        messageBubbleStyle: user.messageBubbleStyle || "default",
-      };
-    }
+    if (!raw) return {};
+
+    const user = JSON.parse(raw);
+    return {
+      userId: user.id || "",
+      username: user.name || "زائر",
+      role: user.role || "guest",
+      avatar: user.avatar || "/pic.png",
+      countryCode: user.countryCode || "SA",
+      avatarFrameUrl: user.avatarFrameUrl || "",
+      giftIconUrl: user.giftIconUrl || "",
+      messageBubbleStyle: user.messageBubbleStyle || "default",
+    };
   } catch {
-    // fallback لزائر
+    return {};
   }
+}
+
+export function getSocket(): Socket {
+  if (socket) return socket;
 
   socket = io({
     path: "/ws",
     transports: ["websocket", "polling"],
-    auth,
+    auth: readSocketAuth(),
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
@@ -47,9 +40,6 @@ export function getSocket(): Socket {
   return socket;
 }
 
-/**
- * يقطع الاتصال ويمسح المثيل
- */
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();
@@ -57,9 +47,6 @@ export function disconnectSocket(): void {
   }
 }
 
-/**
- * يتحقق هل الاتصال نشط
- */
 export function isSocketConnected(): boolean {
   return socket?.connected ?? false;
 }

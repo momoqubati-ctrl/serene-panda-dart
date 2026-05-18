@@ -110,13 +110,15 @@ const ChatInputArea = React.memo(({ roomId, onSendMessage }: { roomId: string, o
     setIsSending(true);
     setMessage(""); // Clear instantly for better UX
 
-    // Calling the parent which handles optimistic UI and socket emit
-    await onSendMessage(text);
-    
-    setIsSending(false);
-    
-    const socket = getSocket();
-    socket.emit("stop_typing", { roomId });
+    try {
+      // Calling the parent which handles optimistic UI and socket emit
+      await onSendMessage(text);
+    } finally {
+      setIsSending(false);
+
+      const socket = getSocket();
+      socket.emit("stop_typing", { roomId });
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,7 +327,27 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
 
     return new Promise<void>((resolve) => {
       const socket = getSocket();
+      let settled = false;
+
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        setMessages((current) =>
+          current.map((item) =>
+            item.clientId === clientId
+              ? { ...item, pending: false, failed: true, text: `${item.text} - لم يصل رد السيرفر` }
+              : item,
+          ),
+        );
+        setError("تعذر إرسال الرسالة. تحقق من اتصال السيرفر.");
+        resolve();
+      }, 8000);
+
       socket.emit("room_message", { roomId, text, clientId }, (res: any) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+
         if (res?.success && res.message) {
           mergeMessages([res.message]);
         } else {
