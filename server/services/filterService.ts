@@ -11,8 +11,40 @@ interface FilterResult {
   matchedWords: string[];
 }
 
+// ذاكرة مؤقتة لقواعد الفلتر لضمان السرعة القصوى
+let cachedRules: { v: string, path: string }[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 30000; // تحديث القواعد كل 30 ثانية تلقائياً
+
 /**
- * يقوم بفحص النص مقابل قواعد الفلتر
+ * جلب القواعد مع دعم التخزين المؤقت
+ */
+async function getRules() {
+  const now = Date.now();
+  if (cachedRules && (now - lastCacheTime < CACHE_TTL)) {
+    return cachedRules;
+  }
+
+  try {
+    const result = await dbPool.query("SELECT v, path FROM notext");
+    cachedRules = result.rows;
+    lastCacheTime = now;
+    return cachedRules;
+  } catch (err) {
+    console.error("Failed to fetch filter rules:", err);
+    return cachedRules || [];
+  }
+}
+
+/**
+ * وظيفة لتفريغ الكاش يدوياً (تستدعى عند إضافة كلمة جديدة من لوحة التحكم)
+ */
+export const clearFilterCache = () => {
+  cachedRules = null;
+};
+
+/**
+ * يقوم بفحص النص مقابل قواعد الفلتر بسرعة فائقة
  */
 export const processText = async (params: {
   text: string;
@@ -24,9 +56,8 @@ export const processText = async (params: {
   
   if (!text) return { originalText: "", filteredText: "", hasMatch: false, action: null, matchedWords: [] };
 
-  // 1. جلب القواعد من قاعدة البيانات
-  const rulesResult = await dbPool.query("SELECT v, path FROM notext");
-  const rules = rulesResult.rows;
+  // جلب القواعد من الكاش (سريع جداً)
+  const rules = await getRules();
 
   const bmsgs = rules.filter(r => r.path === 'bmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
   const wmsgs = rules.filter(r => r.path === 'wmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
@@ -37,47 +68,43 @@ export const processText = async (params: {
   let hasWatchMatch = false;
   const matchedWords: string[] = [];
 
-  // التحقق من الكلمات المسموحة أولاً (تجاوز)
+  // التحقق من الكلمات المسموحة
   for (const word of amsgs) {
     if (text.includes(word)) return { originalText: text, filteredText: text, hasMatch: false, action: "allow", matchedWords: [] };
   }
 
-  // أولاً: فحص الكلمات الممنوعة (يتم تشفيرها)
+  // فحص الكلمات الممنوعة
   for (const word of bmsgs) {
     if (text.includes(word)) {
       hasBlockMatch = true;
       if (!matchedWords.includes(word)) matchedWords.push(word);
-      
-      // استبدال الكلمة بنجوم في النص الذي سيظهر للناس
       const mask = "*".repeat(word.length);
       const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filteredText = filteredText.replace(new RegExp(escapedWord, 'g'), mask);
     }
   }
 
-  // ثانياً: فحص الكلمات المراقبة (لا يتم تشفيرها، ترسل كما هي)
+  // فحص الكلمات المراقبة
   for (const word of wmsgs) {
     if (text.includes(word)) {
       hasWatchMatch = true;
       if (!matchedWords.includes(word)) matchedWords.push(word);
-      // ملاحظة: لا نقوم بتغيير filteredText هنا
     }
   }
 
-  // تحديد الإجراء النهائي للسجل (المنع له أولوية على المراقبة في السجل)
   const finalAction: FilterAction | null = hasBlockMatch ? "block" : hasWatchMatch ? "watch" : null;
 
   if (finalAction) {
-    await logDetection({
+    // التسجيل في السجل يتم في الخلفية لعدم تعطيل الرسالة
+    logDetection({
       v: matchedWords.join(", "),
       msg: text,
       source,
       target: target || "",
       user,
       action: finalAction
-    });
+    }).catch(err => console.error("Logging failed", err));
 
-    // إرسال تنبيه للمشرفين
     const io = getIO();
     if (io) {
       io.to("moderators_alerts").emit("filter_alert", {
@@ -90,40 +117,16 @@ export const processText = async (params: {
     }
   }
 
-  return { 
-    originalText: text, 
-    filteredText, // يحتوي على النجوم للكلمات الممنوعة فقط
-    hasMatch: !!finalAction, 
-    action: finalAction, 
-    matchedWords 
-  };
+  return { originalText: text, filteredText, hasMatch: !!finalAction, action: finalAction, matchedWords };
 };
 
-/**
- * تسجيل الحركة في سجل الرصد (histletter)
- */
 async function logDetection(data: any) {
   try {
     await dbPool.query(
       `INSERT INTO histletter (ip, msg, topic, v, "time", target, source, path)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        data.user.ip,
-        data.msg,
-        data.user.topic,
-        data.v,
-        String(Date.now()),
-        data.target,
-        data.source,
-        data.action === "block" ? "bmsgs" : "wmsgs"
-      ]
+      [data.user.ip, data.msg, data.user.topic, data.v, String(Date.now()), data.target, data.source, data.action === "block" ? "bmsgs" : "wmsgs"]
     );
-
-    // تنظيف السجل (آخر 100)
-    const countRes = await dbPool.query("SELECT count(*)::int as total FROM histletter");
-    if (countRes.rows[0].total > 100) {
-      await dbPool.query("DELETE FROM histletter WHERE id IN (SELECT id FROM histletter ORDER BY id ASC LIMIT 10)");
-    }
   } catch (err) {
     console.error("Filter logging failed:", err);
   }

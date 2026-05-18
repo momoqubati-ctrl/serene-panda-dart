@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { dbPool } from "../../../db";
 import { getAdminContext } from "../../../services/adminAccess";
+import { clearFilterCache } from "../../../services/filterService";
 
 export default defineEventHandler(async (event) => {
   const admin = getAdminContext(event);
@@ -25,6 +26,9 @@ export default defineEventHandler(async (event) => {
      RETURNING id, v AS pattern, $4::text AS action, path AS scope, 1 AS severity, type AS note, true AS "isActive"`,
     [type, path, pattern.slice(0, 255), action],
   );
+
+  // تفريغ الكاش لضمان جلب القواعد الجديدة فوراً
+  clearFilterCache();
 
   return { success: true, filter: inserted.rows[0], message: "تم إنشاء الفلتر" };
 });
