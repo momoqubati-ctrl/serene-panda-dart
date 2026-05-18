@@ -24,18 +24,17 @@ export const processText = async (params: {
   
   if (!text) return { originalText: "", filteredText: "", hasMatch: false, action: null, matchedWords: [] };
 
-  // 1. جلب القواعد من قاعدة البيانات (notext) مع تنظيفها
+  // 1. جلب القواعد من قاعدة البيانات
   const rulesResult = await dbPool.query("SELECT v, path FROM notext");
   const rules = rulesResult.rows;
 
-  // تنظيف الكلمات (trim) لضمان عدم فشل المطابقة بسبب مسافات زائدة في قاعدة البيانات
   const bmsgs = rules.filter(r => r.path === 'bmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
   const wmsgs = rules.filter(r => r.path === 'wmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
   const amsgs = rules.filter(r => r.path === 'amsgs').map(r => String(r.v || "").trim()).filter(Boolean);
 
   let filteredText = text;
-  let hasMatch = false;
-  let action: FilterAction | null = null;
+  let hasBlockMatch = false;
+  let hasWatchMatch = false;
   const matchedWords: string[] = [];
 
   // التحقق من الكلمات المسموحة أولاً (تجاوز)
@@ -43,48 +42,46 @@ export const processText = async (params: {
     if (text.includes(word)) return { originalText: text, filteredText: text, hasMatch: false, action: "allow", matchedWords: [] };
   }
 
-  // فحص الكلمات الممنوعة (bmsgs)
+  // أولاً: فحص الكلمات الممنوعة (يتم تشفيرها)
   for (const word of bmsgs) {
     if (text.includes(word)) {
-      hasMatch = true;
-      action = "block";
+      hasBlockMatch = true;
       if (!matchedWords.includes(word)) matchedWords.push(word);
       
-      // استبدال الكلمة بنجوم
+      // استبدال الكلمة بنجوم في النص الذي سيظهر للناس
       const mask = "*".repeat(word.length);
-      // استخدام RegExp مع flag 'g' لاستبدال كل التكرارات
       const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filteredText = filteredText.replace(new RegExp(escapedWord, 'g'), mask);
     }
   }
 
-  // فحص الكلمات المراقبة (wmsgs) إذا لم تكن ممنوعة بالفعل
-  if (action !== "block") {
-    for (const word of wmsgs) {
-      if (text.includes(word)) {
-        hasMatch = true;
-        action = "watch";
-        if (!matchedWords.includes(word)) matchedWords.push(word);
-      }
+  // ثانياً: فحص الكلمات المراقبة (لا يتم تشفيرها، ترسل كما هي)
+  for (const word of wmsgs) {
+    if (text.includes(word)) {
+      hasWatchMatch = true;
+      if (!matchedWords.includes(word)) matchedWords.push(word);
+      // ملاحظة: لا نقوم بتغيير filteredText هنا
     }
   }
 
-  // إذا تم الرصد، قم بالتسجيل وإرسال التنبيهات
-  if (hasMatch && action) {
+  // تحديد الإجراء النهائي للسجل (المنع له أولوية على المراقبة في السجل)
+  const finalAction: FilterAction | null = hasBlockMatch ? "block" : hasWatchMatch ? "watch" : null;
+
+  if (finalAction) {
     await logDetection({
       v: matchedWords.join(", "),
       msg: text,
       source,
       target: target || "",
       user,
-      action
+      action: finalAction
     });
 
-    // إرسال تنبيه للمشرفين عبر Socket.io
+    // إرسال تنبيه للمشرفين
     const io = getIO();
     if (io) {
       io.to("moderators_alerts").emit("filter_alert", {
-        type: action,
+        type: finalAction,
         word: matchedWords[0],
         user: user.topic,
         source,
@@ -93,11 +90,17 @@ export const processText = async (params: {
     }
   }
 
-  return { originalText: text, filteredText, hasMatch, action, matchedWords };
+  return { 
+    originalText: text, 
+    filteredText, // يحتوي على النجوم للكلمات الممنوعة فقط
+    hasMatch: !!finalAction, 
+    action: finalAction, 
+    matchedWords 
+  };
 };
 
 /**
- * تسجيل الحركة في سجل الرصد (histletter) مع التنظيف التلقائي
+ * تسجيل الحركة في سجل الرصد (histletter)
  */
 async function logDetection(data: any) {
   try {
@@ -116,7 +119,7 @@ async function logDetection(data: any) {
       ]
     );
 
-    // التنظيف التلقائي: إذا تجاوز 100 سجل (زدنا العدد قليلاً)، احذف الأقدم
+    // تنظيف السجل (آخر 100)
     const countRes = await dbPool.query("SELECT count(*)::int as total FROM histletter");
     if (countRes.rows[0].total > 100) {
       await dbPool.query("DELETE FROM histletter WHERE id IN (SELECT id FROM histletter ORDER BY id ASC LIMIT 10)");
