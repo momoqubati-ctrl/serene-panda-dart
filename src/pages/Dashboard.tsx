@@ -6,7 +6,7 @@ import {
   Image as LucideImage, X, ShieldCheck, Menu, Search, Activity, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import MemberList from "@/components/chat/MemberList";
 import RoomList from "@/components/chat/RoomList";
@@ -44,6 +44,23 @@ const Dashboard = () => {
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans text-foreground rtl">
       <PresenceEngine />
       
+      {/* Mobile Sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="right" className="p-0 w-80 border-l border-slate-200 dark:border-slate-800">
+          <SheetTitle className="sr-only">القائمة الجانبية</SheetTitle>
+          <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                {TABS.find(t => t.id === activeTab)?.label}
+              </h2>
+              <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black">REALTIME</Badge>
+            </div>
+
+            <div className="flex-1 overflow-hidden">{renderSidebarContent()}</div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <header className="z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="rounded-xl lg:hidden" onClick={() => setSidebarOpen(true)}>
@@ -148,7 +165,10 @@ const Dashboard = () => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setSidebarOpen(true);
+              }}
               className={`flex flex-col items-center gap-1 transition-all ${isActive ? "text-primary scale-110" : "text-slate-400"}`}
             >
               <div className={`p-3 rounded-2xl ${isActive ? "bg-primary/10" : ""}`}>
