@@ -46,7 +46,11 @@ const Dashboard = () => {
       
       {/* Mobile Sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="right" className="p-0 w-80 border-l border-slate-200 dark:border-slate-800">
+        <SheetContent 
+          side="right" 
+          className="p-0 w-80 border-l border-slate-200 dark:border-slate-800"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <SheetTitle className="sr-only">القائمة الجانبية</SheetTitle>
           <div className="flex flex-col h-full bg-white dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">

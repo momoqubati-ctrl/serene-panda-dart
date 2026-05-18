@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     // جلب بيانات العضو للفحص
-    const userRes = await dbPool.query("SELECT username, topic FROM users WHERE id = $1 OR idreg = $1 LIMIT 1", [authorId]);
+    const userRes = await dbPool.query("SELECT username, topic FROM users WHERE id::text = $1 OR idreg = $1 LIMIT 1", [authorId]);
     const user = userRes.rows[0] || { username: authorId, topic: authorId };
     const ip = getRequestHeader(event, "x-forwarded-for") || getRequestHeader(event, "x-real-ip") || "127.0.0.1";
 
