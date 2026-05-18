@@ -1,16 +1,22 @@
 /**
  * Room Handlers
- * يدير أحداث WebSocket المتعلقة بالغرف والرسائل
+ * يدير أحداث WebSocket المتعلقة بالغرف والرسائل مع دمج نظام الفلترة
  */
 import type { Server, Socket } from "socket.io";
 import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount, getConnectedUser } from "./presenceManager";
 import { listRooms, addMessage, listMessages } from "../services/chatStore";
+import { processText } from "../services/filterService";
 
 const TYPING_THROTTLE_MS = 900;
 const typingTimers = new Map<string, NodeJS.Timeout>();
 
 export function registerRoomHandlers(io: Server, socket: Socket): void {
   const user = socket.data.user;
+
+  // الانضمام لغرفة تنبيهات المشرفين إذا كان يملك الصلاحية
+  if (user.role === 'admin' || user.role === 'owner') {
+    socket.join("moderators_alerts");
+  }
 
   /**
    * دخول غرفة
@@ -22,7 +28,6 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       return;
     }
 
-    // مغادرة الغرفة السابقة
     const previousRoomId = getConnectedUser(socket.id)?.roomId;
     if (previousRoomId && previousRoomId !== roomId) {
       socket.leave(`room:${previousRoomId}`);
@@ -35,13 +40,10 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       });
     }
 
-    // الانضمام للغرفة الجديدة
     socket.join(`room:${roomId}`);
     joinRoom(socket.id, roomId);
 
     const members = getRoomMembers(roomId);
-
-    // إرسال الرسائل الحالية + الأعضاء
     const messages = listMessages(roomId);
 
     callback?.({
@@ -60,7 +62,6 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       memberCount: members.length,
     });
 
-    // إبلاغ بقية الأعضاء بانضمام مستخدم جديد
     socket.to(`room:${roomId}`).emit("user_joined", {
       socketId: socket.id,
       user: {
@@ -74,61 +75,33 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       },
       memberCount: members.length,
     });
-
-    // رسالة نظام ترحيبية
-    const rooms = listRooms();
-    const room = rooms.find((r) => r.id === roomId);
-    if (room) {
-      socket.emit("system_message", {
-        type: "welcome",
-        text: `مرحباً بك في ${room.name}`,
-        roomId,
-      });
-    }
   });
 
   /**
-   * مغادرة غرفة
+   * إرسال رسالة في غرفة (مع الفلترة)
    */
-  socket.on("leave_room", (data: { roomId: string }) => {
-    const roomId = String(data?.roomId || "").trim();
-    if (!roomId) return;
-
-    socket.leave(`room:${roomId}`);
-    leaveRoom(socket.id);
-
-    io.to(`room:${roomId}`).emit("user_left", {
-      socketId: socket.id,
-      username: user.username,
-      roomId,
-      memberCount: getRoomMemberCount(roomId),
-    });
-  });
-
-  /**
-   * إرسال رسالة في غرفة
-   */
-  socket.on("room_message", (data: { roomId: string; text: string; clientId?: string }, callback?: (res: any) => void) => {
+  socket.on("room_message", async (data: { roomId: string; text: string; clientId?: string }, callback?: (res: any) => void) => {
     const roomId = String(data?.roomId || "").trim();
     const text = String(data?.text || "").trim();
     const clientId = data?.clientId;
 
-    if (!roomId) {
-      callback?.({ success: false, message: "معرف الغرفة مطلوب" });
+    if (!roomId || !text) {
+      callback?.({ success: false, message: "البيانات ناقصة" });
       return;
     }
 
-    if (!text) {
-      callback?.({ success: false, message: "نص الرسالة مطلوب" });
-      return;
-    }
+    // --- تطبيق الفلترة الذكية ---
+    const filterResult = await processText({
+      text,
+      source: roomId,
+      user: { 
+        username: user.username, 
+        topic: user.username, 
+        ip: socket.handshake.address || "127.0.0.1" 
+      }
+    });
 
-    if (text.length > 1000) {
-      callback?.({ success: false, message: "الرسالة طويلة جداً" });
-      return;
-    }
-
-    // إنشاء وحفظ الرسالة
+    // إنشاء وحفظ الرسالة (باستخدام النص المفلتر)
     const message = addMessage({
       roomId,
       clientId,
@@ -139,72 +112,32 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       avatarFrameUrl: user.avatarFrameUrl,
       giftIconUrl: user.giftIconUrl,
       messageBubbleStyle: user.messageBubbleStyle,
-      text,
+      text: filterResult.filteredText,
     });
 
-    // بث الرسالة لكل أعضاء الغرفة (بما فيهم المرسل)
     io.to(`room:${roomId}`).emit("new_message", {
       roomId,
       message,
     });
 
-    // تأكيد للمرسل
     callback?.({ success: true, message });
   });
 
-  /**
-   * حالة الكتابة
-   */
   socket.on("typing", (data: { roomId: string }) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) return;
-
-    // Throttle الكتابة
     const key = `${socket.id}:${roomId}`;
     if (typingTimers.has(key)) return;
-
-    typingTimers.set(
-      key,
-      setTimeout(() => {
-        typingTimers.delete(key);
-      }, TYPING_THROTTLE_MS),
-    );
-
-    socket.to(`room:${roomId}`).emit("user_typing", {
-      socketId: socket.id,
-      username: user.username,
-      roomId,
-    });
+    typingTimers.set(key, setTimeout(() => typingTimers.delete(key), TYPING_THROTTLE_MS));
+    socket.to(`room:${roomId}`).emit("user_typing", { socketId: socket.id, username: user.username, roomId });
   });
 
-  /**
-   * التوقف عن الكتابة
-   */
   socket.on("stop_typing", (data: { roomId: string }) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) return;
-
-    socket.to(`room:${roomId}`).emit("user_stop_typing", {
-      socketId: socket.id,
-      username: user.username,
-      roomId,
-    });
+    socket.to(`room:${roomId}`).emit("user_stop_typing", { socketId: socket.id, username: user.username, roomId });
   });
 
-  /**
-   * طلب قائمة الغرف
-   */
-  socket.on("get_rooms", (callback?: (res: any) => void) => {
-    const rooms = listRooms().map((room) => ({
-      ...room,
-      members: getRoomMemberCount(room.id),
-    }));
-    callback?.({ success: true, rooms });
-  });
-
-  /**
-   * عند قطع الاتصال
-   */
   socket.on("disconnect", () => {
     const currentUser = getConnectedUser(socket.id);
     if (currentUser?.roomId) {
@@ -214,13 +147,6 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         roomId: currentUser.roomId,
         memberCount: Math.max(0, getRoomMemberCount(currentUser.roomId) - 1),
       });
-    }
-    // تنظيف typing timers
-    for (const [key, timer] of typingTimers) {
-      if (key.startsWith(`${socket.id}:`)) {
-        clearTimeout(timer);
-        typingTimers.delete(key);
-      }
     }
   });
 }
