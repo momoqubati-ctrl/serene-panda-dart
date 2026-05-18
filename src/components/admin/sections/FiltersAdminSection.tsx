@@ -3,19 +3,22 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Ban, Search, Trash2, ShieldAlert, Eye, History, AlertTriangle } from 'lucide-react';
+import { Ban, Search, Trash2, ShieldAlert, Eye, History, AlertTriangle, Plus } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import AdminDataTable from '../shared/AdminDataTable';
 import { getAdminHeaders, formatAdminDate } from '../utils';
 import { useConfirm } from '@/hooks/use-confirm';
 import { showSuccess, showError } from '@/utils/toast';
+import AddFilterDialog from './AddFilterDialog';
 
 const FiltersAdminSection = () => {
   const [filters, setFilters] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'rules' | 'logs'>('rules');
+  const [isAddDialogOpen, setIsAddAddDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { confirm } = useConfirm();
 
   const fetchData = async () => {
@@ -37,6 +40,32 @@ const FiltersAdminSection = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleDeleteRule = async (id: number, pattern: string) => {
+    const ok = await confirm({
+      title: "حذف قانون",
+      message: `هل أنت متأكد من حذف الكلمة "${pattern}" من الفلتر؟`,
+      variant: "destructive"
+    });
+
+    if (ok) {
+      try {
+        const res = await fetch(`/api/admin/filters/${id}`, {
+          method: 'DELETE',
+          headers: getAdminHeaders()
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(data.message);
+          setFilters(prev => prev.filter(f => f.id !== id));
+        } else {
+          showError(data.message);
+        }
+      } catch (err) {
+        showError("حدث خطأ أثناء الحذف");
+      }
+    }
+  };
 
   const handleClearLogs = async () => {
     const ok = await confirm({
@@ -61,6 +90,10 @@ const FiltersAdminSection = () => {
     }
   };
 
+  const filteredRules = filters.filter(f => 
+    f.pattern.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const ruleColumns = [
     { 
       key: "pattern", 
@@ -80,7 +113,16 @@ const FiltersAdminSection = () => {
     {
       key: "actions",
       label: "حذف",
-      render: () => <Button variant="ghost" size="icon" className="text-red-400 hover:bg-red-50"><Trash2 size={16} /></Button>
+      render: (_: any, row: any) => (
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => handleDeleteRule(row.id, row.pattern)}
+          className="text-red-400 hover:bg-red-50 rounded-xl"
+        >
+          <Trash2 size={16} />
+        </Button>
+      )
     }
   ];
 
@@ -140,12 +182,22 @@ const FiltersAdminSection = () => {
           <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-row items-center justify-between">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <Input placeholder="بحث في الكلمات المضافة..." className="h-11 pr-10 rounded-2xl bg-slate-50 border-none" />
+              <Input 
+                placeholder="بحث في الكلمات المضافة..." 
+                className="h-11 pr-10 rounded-2xl bg-slate-50 border-none" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <Button className="rounded-2xl h-11 px-6 font-black shadow-lg shadow-primary/20">+ إضافة قانون</Button>
+            <Button 
+              onClick={() => setIsAddAddDialogOpen(true)}
+              className="rounded-2xl h-11 px-6 font-black shadow-lg shadow-primary/20 gap-2"
+            >
+              <Plus size={18} /> إضافة قانون
+            </Button>
           </CardHeader>
           <CardContent className="p-0">
-            <AdminDataTable columns={ruleColumns} rows={filters} loading={loading} />
+            <AdminDataTable columns={ruleColumns} rows={filteredRules} loading={loading} />
           </CardContent>
         </Card>
       ) : (
@@ -166,6 +218,12 @@ const FiltersAdminSection = () => {
           </Card>
         </div>
       )}
+
+      <AddFilterDialog 
+        isOpen={isAddDialogOpen} 
+        onClose={() => setIsAddAddDialogOpen(false)} 
+        onSuccess={fetchData} 
+      />
     </div>
   );
 };
