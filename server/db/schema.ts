@@ -28,7 +28,7 @@ export const socialEdges = pgTable(
     sourceId: uuid("source_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
     targetId: uuid("target_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
     type: edgeType("type").notNull(),
-    weight: integer("weight").default(1).notNull(), // قوة العلاقة
+    weight: integer("weight").default(1).notNull(),
     metadata: jsonb("metadata").default({}).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -62,8 +62,8 @@ export const identityEffects = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     slug: varchar("slug", { length: 64 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
-    type: varchar("type", { length: 40 }).notNull(), // frame, aura, bubble, name_gradient
-    config: jsonb("config").default({}).notNull(), // CSS/Animation properties
+    type: varchar("type", { length: 40 }).notNull(),
+    config: jsonb("config").default({}).notNull(),
     assetUrl: text("asset_url"),
     isPremium: boolean("is_premium").default(false).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
@@ -79,7 +79,7 @@ export const userIdentityState = pgTable(
     activeAuraId: uuid("active_aura_id").references(() => identityEffects.id),
     activeThemeId: varchar("active_theme_id", { length: 80 }),
     customCss: text("custom_css"),
-    reactiveConfig: jsonb("reactive_config").default({}).notNull(), // Voice/Presence reactivity
+    reactiveConfig: jsonb("reactive_config").default({}).notNull(),
   }
 );
 
@@ -88,22 +88,22 @@ export const behaviorScores = pgTable(
   "behavior_scores",
   {
     userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
-    trustScore: integer("trust_score").default(50).notNull(), // 0-100
-    toxicityScore: integer("toxicity_score").default(0).notNull(), // 0-100
+    trustScore: integer("trust_score").default(50).notNull(),
+    toxicityScore: integer("toxicity_score").default(0).notNull(),
     influenceScore: integer("influence_score").default(0).notNull(),
     spamProbability: numeric("spam_probability", { precision: 4, scale: 3 }).default("0").notNull(),
     lastRecalculatedAt: timestamp("last_recalculated_at", { withTimezone: true }).defaultNow().notNull(),
   }
 );
 
-// --- 4. ACTIVITY STREAM (EVENT SOURCING READY) ---
+// --- 4. ACTIVITY STREAM ---
 export const activityStream = pgTable(
   "activity_stream",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
-    verb: varchar("verb", { length: 64 }).notNull(), // joined, sent, followed, reacted
-    objectType: varchar("object_type", { length: 64 }).notNull(), // room, message, user
+    verb: varchar("verb", { length: 64 }).notNull(),
+    objectType: varchar("object_type", { length: 64 }).notNull(),
     objectId: varchar("object_id", { length: 128 }),
     targetId: varchar("target_id", { length: 128 }),
     metadata: jsonb("metadata").default({}).notNull(),
@@ -117,7 +117,7 @@ export const activityStream = pgTable(
   ]
 );
 
-// --- EXISTING TABLES (RETAINED & UPDATED) ---
+// --- 5. CORE TABLES (RESTORED) ---
 export const users = pgTable(
   "users",
   {
@@ -141,6 +141,48 @@ export const users = pgTable(
   ]
 );
 
+export const userProfiles = pgTable("user_profiles", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  idreg: varchar("idreg", { length: 40 }),
+  lid: varchar("lid", { length: 40 }),
+  uid: varchar("uid", { length: 40 }),
+  profileMsg: text("profile_msg"),
+  avatarUrl: text("avatar_url"),
+  bannerUrl: text("banner_url"),
+  themeId: varchar("theme_id", { length: 80 }),
+  avatarFrameUrl: text("avatar_frame_url"),
+  giftIconUrl: text("gift_icon_url"),
+  profileIconUrl: text("profile_icon_url"),
+  nameGradient: text("name_gradient"),
+  nameEffectId: varchar("name_effect_id", { length: 80 }),
+  messageBubbleStyle: varchar("message_bubble_style", { length: 80 }),
+  profileAccentColor: varchar("profile_accent_color", { length: 20 }),
+  profileBackgroundUrl: text("profile_background_url"),
+  backgroundColor: varchar("background_color", { length: 20 }),
+  messageColor: varchar("message_color", { length: 20 }),
+  nameColor: varchar("name_color", { length: 20 }),
+  gradientColor: varchar("gradient_color", { length: 20 }),
+  evaluation: integer("evaluation").default(0),
+  rep: integer("rep").default(0),
+  coins: integer("coins").default(0),
+  wallPostLikes: integer("wall_post_likes").default(0),
+  giftsReceivedCount: integer("gifts_received_count").default(0),
+  power: varchar("power", { length: 80 }),
+  icon: text("icon"),
+  isLogin: varchar("is_login", { length: 20 }),
+  muted: boolean("muted").default(false),
+  documents: boolean("documents").default(false),
+  busy: boolean("busy").default(false),
+  alerts: boolean("alerts").default(true),
+  nopmcall: boolean("nopmcall").default(false),
+  nopmvideocall: boolean("nopmvideocall").default(false),
+  roomId: varchar("room_id", { length: 128 }),
+  siteBadgeId: varchar("site_badge_id", { length: 80 }),
+  siteBadge: text("site_badge"),
+  joinuser: bigint("joinuser", { mode: "number" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const rooms = pgTable(
   "rooms",
   {
@@ -158,6 +200,57 @@ export const rooms = pgTable(
   (table) => [uniqueIndex("rooms_slug_idx").on(table.slug)]
 );
 
+export const moderationEvents = pgTable("moderation_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
+  roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  reason: text("reason"),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const siteSettings = pgTable("site_settings", {
+  key: varchar("key", { length: 120 }).primaryKey(),
+  value: jsonb("value").default({}).notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const chatBots = pgTable("chat_bots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  botKey: varchar("bot_key", { length: 80 }).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  kind: varchar("kind", { length: 60 }).notNull(),
+  avatarUrl: text("avatar_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  settings: jsonb("settings").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [uniqueIndex("chat_bots_key_idx").on(table.botKey)]);
+
+export const moderationFilters = pgTable("moderation_filters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  pattern: varchar("pattern", { length: 240 }).notNull(),
+  action: varchar("action", { length: 40 }).default("block").notNull(),
+  scope: varchar("scope", { length: 40 }).default("global").notNull(),
+  severity: integer("severity").default(1).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 120 }).notNull(),
+  targetType: varchar("target_type", { length: 64 }),
+  targetId: varchar("target_id", { length: 128 }),
+  metadata: jsonb("metadata").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const wallPosts = pgTable("wall_posts", {
   id: uuid("id").defaultRandom().primaryKey(),
   authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
@@ -165,3 +258,17 @@ export const wallPosts = pgTable("wall_posts", {
   mediaUrl: text("media_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const wallComments = pgTable("wall_comments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  postId: uuid("post_id").references(() => wallPosts.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+  body: text("body"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const wallPostLikes = pgTable("wall_post_likes", {
+  postId: uuid("post_id").references(() => wallPosts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [primaryKey({ columns: [table.postId, table.userId] })]);
