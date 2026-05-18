@@ -3,7 +3,7 @@ import { dbPool } from "../db";
 export const listWallPosts = async () => {
   const result = await dbPool.query(`
     SELECT b.id, b.msg as body, b.pic as "mediaUrl", b.uid as "authorId",
-           u.username as "authorName", u.avatar_url as "authorAvatar"
+           u.username as "authorName", COALESCE(u.ico, u.pic) as "authorAvatar"
     FROM bars b
     LEFT JOIN users u ON b.uid = u.id::text OR b.uid = u.idreg::text
     ORDER BY b.id DESC
