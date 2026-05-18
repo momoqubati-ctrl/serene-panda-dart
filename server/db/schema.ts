@@ -22,6 +22,55 @@ export const messageStatus = pgEnum("message_status", ["pending", "sent", "edite
 export const walletOwnerType = pgEnum("wallet_owner_type", ["site", "user", "agent"]);
 export const ledgerDirection = pgEnum("ledger_direction", ["credit", "debit"]);
 
+// --- نظام الرتب الجديد ---
+export const roles = pgTable(
+  "roles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: varchar("slug", { length: 64 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    iconUrl: text("icon_url").default("").notNull(),
+    color: varchar("color", { length: 32 }).default("#000000").notNull(),
+    rankPriority: integer("rank_priority").default(0).notNull(), // الهرمية: الرقم الأعلى يتفوق
+    isStaff: boolean("is_staff").default(false).notNull(),
+    isHidden: boolean("is_hidden").default(false).notNull(),
+    autoEnabled: boolean("auto_enabled").default(false).notNull(),
+    autoPoints: integer("auto_points").default(0).notNull(),
+    legacyMetadata: jsonb("legacy_metadata").default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("roles_slug_idx").on(table.slug),
+    index("roles_priority_idx").on(table.rankPriority),
+  ],
+);
+
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }).notNull(),
+    permissionKey: varchar("permission_key", { length: 120 }).notNull(),
+    permissionValue: jsonb("permission_value").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.roleId, table.permissionKey] }),
+  ],
+);
+
+// --- نقاط المستخدمين والترقية ---
+export const userPoints = pgTable(
+  "user_points",
+  {
+    userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    totalPoints: bigint("total_points", { mode: "number" }).default(0).notNull(),
+    messageCount: integer("message_count").default(0).notNull(),
+    activityMinutes: integer("activity_count").default(0).notNull(),
+    likesReceived: integer("likes_received").default(0).notNull(),
+    lastUpdate: timestamp("last_update", { withTimezone: true }).defaultNow().notNull(),
+  }
+);
+
 export const users = pgTable(
   "users",
   {
@@ -30,7 +79,8 @@ export const users = pgTable(
     username: varchar("username", { length: 64 }).notNull(),
     displayName: varchar("display_name", { length: 120 }).notNull(),
     passwordHash: text("password_hash"),
-    role: accountRole("role").default("member").notNull(),
+    role: accountRole("role").default("member").notNull(), // Fallback role
+    dynamicRoleId: uuid("role_id").references(() => roles.id, { onDelete: "set null" }), // الرتبة الديناميكية
     status: accountStatus("status").default("active").notNull(),
     avatarUrl: text("avatar_url"),
     coverUrl: text("cover_url"),
@@ -443,30 +493,8 @@ export const legacyImportMappings = pgTable(
   ],
 );
 
-export const roles = pgTable(
-  "roles",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    legacyName: varchar("legacy_name", { length: 120 }),
-    name: varchar("name", { length: 120 }).notNull(),
-    rank: integer("rank").default(0).notNull(),
-    iconUrl: text("icon_url").default("").notNull(),
-    isSystem: boolean("is_system").default(false).notNull(),
-    autoEnabled: boolean("auto_enabled").default(false).notNull(),
-    autoPromote: boolean("auto_promote").default(false).notNull(),
-    autoPoints: integer("auto_points").default(0).notNull(),
-    legacyMetadata: jsonb("legacy_metadata").default({}).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("roles_name_idx").on(table.name),
-    index("roles_rank_idx").on(table.rank),
-  ],
-);
-
-export const rolePermissions = pgTable(
-  "role_permissions",
+export const rolePermissionsLegacy = pgTable(
+  "role_permissions_legacy",
   {
     roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }).notNull(),
     permissionKey: varchar("permission_key", { length: 120 }).notNull(),
@@ -518,7 +546,7 @@ export const siteBadges = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     background: text("background").default("").notNull(),
     iconUrl: text("icon_url").default("").notNull(),
-    backgroundType: varchar("background_type", { length: 40 }).default("static").notNull(),
+    background_type: varchar("background_type", { length: 40 }).default("static").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     metadata: jsonb("metadata").default({}).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -536,7 +564,7 @@ export const roomBadges = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     background: text("background").default("").notNull(),
     iconUrl: text("icon_url").default("").notNull(),
-    backgroundType: varchar("background_type", { length: 40 }).default("static").notNull(),
+    background_type: varchar("background_type", { length: 40 }).default("static").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     metadata: jsonb("metadata").default({}).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
