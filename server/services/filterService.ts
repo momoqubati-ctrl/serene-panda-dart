@@ -22,13 +22,16 @@ export const processText = async (params: {
 }): Promise<FilterResult> => {
   const { text, source, user, target } = params;
   
-  // 1. جلب القواعد من قاعدة البيانات (notext)
+  if (!text) return { originalText: "", filteredText: "", hasMatch: false, action: null, matchedWords: [] };
+
+  // 1. جلب القواعد من قاعدة البيانات (notext) مع تنظيفها
   const rulesResult = await dbPool.query("SELECT v, path FROM notext");
   const rules = rulesResult.rows;
 
-  const bmsgs = rules.filter(r => r.path === 'bmsgs').map(r => r.v);
-  const wmsgs = rules.filter(r => r.path === 'wmsgs').map(r => r.v);
-  const amsgs = rules.filter(r => r.path === 'amsgs').map(r => r.v);
+  // تنظيف الكلمات (trim) لضمان عدم فشل المطابقة بسبب مسافات زائدة في قاعدة البيانات
+  const bmsgs = rules.filter(r => r.path === 'bmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
+  const wmsgs = rules.filter(r => r.path === 'wmsgs').map(r => String(r.v || "").trim()).filter(Boolean);
+  const amsgs = rules.filter(r => r.path === 'amsgs').map(r => String(r.v || "").trim()).filter(Boolean);
 
   let filteredText = text;
   let hasMatch = false;
@@ -45,10 +48,13 @@ export const processText = async (params: {
     if (text.includes(word)) {
       hasMatch = true;
       action = "block";
-      matchedWords.push(word);
-      // "تشفير" الكلمة (استبدالها بنجوم)
+      if (!matchedWords.includes(word)) matchedWords.push(word);
+      
+      // استبدال الكلمة بنجوم
       const mask = "*".repeat(word.length);
-      filteredText = filteredText.split(word).join(mask);
+      // استخدام RegExp مع flag 'g' لاستبدال كل التكرارات
+      const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filteredText = filteredText.replace(new RegExp(escapedWord, 'g'), mask);
     }
   }
 
@@ -58,7 +64,7 @@ export const processText = async (params: {
       if (text.includes(word)) {
         hasMatch = true;
         action = "watch";
-        matchedWords.push(word);
+        if (!matchedWords.includes(word)) matchedWords.push(word);
       }
     }
   }
@@ -75,17 +81,15 @@ export const processText = async (params: {
     });
 
     // إرسال تنبيه للمشرفين عبر Socket.io
-    if (action === "block" || action === "watch") {
-      const io = getIO();
-      if (io) {
-        io.to("moderators_alerts").emit("filter_alert", {
-          type: action,
-          word: matchedWords[0],
-          user: user.topic,
-          source,
-          text
-        });
-      }
+    const io = getIO();
+    if (io) {
+      io.to("moderators_alerts").emit("filter_alert", {
+        type: action,
+        word: matchedWords[0],
+        user: user.topic,
+        source,
+        text
+      });
     }
   }
 
@@ -112,10 +116,10 @@ async function logDetection(data: any) {
       ]
     );
 
-    // التنظيف التلقائي: إذا تجاوز 35 سجلاً، احذف الأقدم
+    // التنظيف التلقائي: إذا تجاوز 100 سجل (زدنا العدد قليلاً)، احذف الأقدم
     const countRes = await dbPool.query("SELECT count(*)::int as total FROM histletter");
-    if (countRes.rows[0].total > 35) {
-      await dbPool.query("DELETE FROM histletter WHERE id IN (SELECT id FROM histletter ORDER BY id ASC LIMIT 5)");
+    if (countRes.rows[0].total > 100) {
+      await dbPool.query("DELETE FROM histletter WHERE id IN (SELECT id FROM histletter ORDER BY id ASC LIMIT 10)");
     }
   } catch (err) {
     console.error("Filter logging failed:", err);

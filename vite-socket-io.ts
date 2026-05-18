@@ -109,12 +109,12 @@ export function viteSocketIO(): Plugin {
       }
 
       // ========== Real DB Message Store via chatStore ==========
-      // We will use dynamic import because Vite is in ESM context
-      // and we want to avoid issues with standard imports inside the hook.
       let chatStore: any;
       import("./server/services/chatStore").then(m => { chatStore = m; });
       let powersService: any;
       import("./server/services/powersService").then(m => { powersService = m; });
+      let filterService: any;
+      import("./server/services/filterService").then(m => { filterService = m; });
 
       // ========== Typing throttle ==========
       const typingTimers = new Map<string, NodeJS.Timeout>();
@@ -140,6 +140,12 @@ export function viteSocketIO(): Plugin {
         };
 
         addUser(socket.id, userData);
+        
+        // Join moderators alerts room if authorized
+        if (role === 'admin' || role === 'owner') {
+          socket.join("moderators_alerts");
+        }
+
         io!.emit("online_count", { count: connectedUsers.size });
 
         socket.emit("connected", {
@@ -209,12 +215,23 @@ export function viteSocketIO(): Plugin {
           if (text.length > 1000) { callback?.({ success: false, message: "الرسالة طويلة جداً" }); return; }
 
           try {
+            // --- تطبيق الفلترة ---
+            let finalChatText = text;
+            if (filterService) {
+              const filterRes = await filterService.processText({
+                text,
+                source: roomId,
+                user: { username, topic: username, ip: socket.handshake.address || "127.0.0.1" }
+              });
+              finalChatText = filterRes.filteredText;
+            }
+
             const msg = await chatStore.addMessage({
               roomId,
               clientId: data.clientId,
               user: username,
               role,
-              text,
+              text: finalChatText,
               avatar: userData.avatar,
               countryCode: userData.countryCode,
               avatarFrameUrl: userData.avatarFrameUrl,
@@ -338,11 +355,36 @@ export function viteSocketIO(): Plugin {
         });
 
         // ===== PM Events =====
-        socket.on("pm_message", (data: any, callback?: any) => {
+        socket.on("pm_message", async (data: any, callback?: any) => {
           const toSocketId = String(data?.toSocketId || "").trim();
           const text = String(data?.text || "").trim();
           if (!toSocketId || !text) { callback?.({ success: false, message: "بيانات ناقصة" }); return; }
-          const msg = { id: crypto.randomUUID(), clientId: data.clientId, fromSocketId: socket.id, toSocketId, user: username, role, avatar: userData.avatar, countryCode: userData.countryCode, text: text.slice(0, 1000), createdAt: new Date().toISOString() };
+          
+          // --- تطبيق الفلترة في الخاص ---
+          let finalPmText = text;
+          if (filterService) {
+            const filterRes = await filterService.processText({
+              text,
+              source: "private",
+              user: { username, topic: username, ip: socket.handshake.address || "127.0.0.1" },
+              target: toSocketId
+            });
+            finalPmText = filterRes.filteredText;
+          }
+
+          const msg = { 
+            id: crypto.randomUUID(), 
+            clientId: data.clientId, 
+            fromSocketId: socket.id, 
+            toSocketId, 
+            user: username, 
+            role, 
+            avatar: userData.avatar, 
+            countryCode: userData.countryCode, 
+            text: finalPmText.slice(0, 1000), 
+            createdAt: new Date().toISOString() 
+          };
+          
           io!.to(toSocketId).emit("pm_message", msg);
           callback?.({ success: true, message: msg });
         });
