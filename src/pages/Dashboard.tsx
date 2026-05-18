@@ -41,7 +41,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans text-foreground rtl">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans text-foreground rtl">
       <PresenceEngine />
       
       {/* Mobile Sidebar */}

@@ -366,8 +366,8 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
   }, [roomId, mergeMessages]);
 
   return (
-    <div className={`flex h-full flex-col bg-card ltr ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
-      <header className="z-10 flex items-center justify-between border-b border-border bg-card px-4 py-2 shadow-sm">
+    <div className={`relative flex h-full flex-col bg-card ltr ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
+      <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between border-b border-border bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2 shadow-sm">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl">
@@ -409,7 +409,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
       </header>
 
       {showMics && (
-        <div className="grid grid-cols-5 gap-2 overflow-x-auto border-b border-border bg-muted p-2 no-scrollbar">
+        <div className="absolute top-[56px] inset-x-0 z-10 grid grid-cols-5 gap-2 overflow-x-auto border-b border-border bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md p-2 no-scrollbar">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex flex-col items-center gap-1">
               <div className="relative">
@@ -433,7 +433,7 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-muted/50 p-3">
+      <div ref={scrollRef} className={`flex-1 space-y-3 overflow-y-auto bg-muted/50 p-3 ${showMics ? "pt-[120px]" : "pt-[64px]"}`}>
         {isLoading && (
           <div className="flex h-24 items-center justify-center text-muted-foreground">
             <Loader2 className="animate-spin" size={20} />
