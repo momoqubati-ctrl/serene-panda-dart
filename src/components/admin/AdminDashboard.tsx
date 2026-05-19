@@ -20,7 +20,7 @@ import LegacyCpSection from './sections/LegacyCpSection';
 import ModerationSection from './moderation/ModerationSection';
 import BansSection from './bans/BansSection';
 import AuditLogsSection from './audit/AuditLogsSection';
-import AccessLogsSection from './logs/AccessLogsSection';
+import AccessLogsSection from './access-logs/AccessLogsSection';
 
 interface AdminDashboardProps {
   section: string;
