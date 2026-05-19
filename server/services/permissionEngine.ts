@@ -1,4 +1,5 @@
 import { dbPool } from "../db";
+import { redis, KEYS } from "./redis";
 
 export type PermissionKey = 
   | "kick" | "ban" | "meiut" | "loveu" | "delpic" | "delmsg" | "delbc"
@@ -16,27 +17,43 @@ export interface UserContext {
   permissions: Set<string>;
 }
 
-// ذاكرة مؤقتة للصلاحيات (يمكن استبدالها بـ Redis لاحقاً)
-const permissionCache = new Map<string, UserContext>();
-
 /**
  * جلب سياق المستخدم الكامل (الرتبة + الصلاحيات)
  */
 export const getUserContext = async (userId: string): Promise<UserContext> => {
-  if (permissionCache.has(userId)) return permissionCache.get(userId)!;
+  const cacheKey = KEYS.permissions(userId);
 
+  // 1. محاولة الجلب من Redis Cache
+  try {
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      return {
+        userId: parsed.userId,
+        roleId: parsed.roleId,
+        rankPriority: parsed.rankPriority,
+        isStaff: parsed.isStaff,
+        permissions: new Set(parsed.permissions || [])
+      };
+    }
+  } catch (err) {
+    console.warn(`[PermissionEngine] Redis cache read error for user ${userId}:`, err);
+  }
+
+  // 2. في حال عدم وجود كاش، جلب البيانات من PostgreSQL مع تصحيح عملية الربط بجدول user_role_assignments
   const result = await dbPool.query(`
     SELECT 
       u.id as "userId",
       r.id as "roleId",
-      r.rank_priority as "rankPriority",
-      r.is_staff as "isStaff",
+      r.rank as "rankPriority",
+      r.is_system as "isStaff",
       COALESCE(jsonb_object_agg(rp.permission_key, rp.permission_value) FILTER (WHERE rp.permission_key IS NOT NULL), '{}'::jsonb) as permissions
     FROM users u
-    LEFT JOIN roles r ON u.role_id = r.id
+    LEFT JOIN user_role_assignments ura ON u.id = ura.user_id
+    LEFT JOIN roles r ON ura.role_id = r.id
     LEFT JOIN role_permissions rp ON r.id = rp.role_id
-    WHERE u.id = $1 OR u.idreg::text = $1
-    GROUP BY u.id, r.id
+    WHERE u.id = $1 OR u.legacy_id::text = $1
+    GROUP BY u.id, r.id, r.rank, r.is_system
   `, [userId]);
 
   if (result.rowCount === 0) {
@@ -46,7 +63,9 @@ export const getUserContext = async (userId: string): Promise<UserContext> => {
   const row = result.rows[0];
   const perms = new Set<string>();
   Object.entries(row.permissions || {}).forEach(([key, val]) => {
-    if (val === true || val === 1) perms.add(key);
+    if (val === true || val === 1 || String(val) === "true") {
+      perms.add(key);
+    }
   });
 
   const context: UserContext = {
@@ -57,7 +76,21 @@ export const getUserContext = async (userId: string): Promise<UserContext> => {
     permissions: perms
   };
 
-  permissionCache.set(userId, context);
+  // 3. تخزين النتيجة في كاش Redis لفترة 24 ساعة
+  try {
+    const serializedContext = {
+      userId: context.userId,
+      roleId: context.roleId,
+      rankPriority: context.rankPriority,
+      isStaff: context.isStaff,
+      permissions: Array.from(context.permissions)
+    };
+    await redis.set(cacheKey, JSON.stringify(serializedContext));
+    await redis.expire(cacheKey, 86400); // 24 ساعة صلاحية الكاش
+  } catch (err) {
+    console.warn(`[PermissionEngine] Redis cache write error for user ${userId}:`, err);
+  }
+
   return context;
 };
 
@@ -83,7 +116,12 @@ export const canModerate = async (actorId: string, targetId: string): Promise<bo
 /**
  * تفريغ الكاش عند تحديث الرتب
  */
-export const invalidatePermissionCache = (userId?: string) => {
-  if (userId) permissionCache.delete(userId);
-  else permissionCache.clear();
+export const invalidatePermissionCache = async (userId?: string) => {
+  if (userId) {
+    try {
+      await redis.del(KEYS.permissions(userId));
+    } catch (err) {
+      console.warn(`[PermissionEngine] Redis cache delete error for user ${userId}:`, err);
+    }
+  }
 };

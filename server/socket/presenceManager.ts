@@ -1,7 +1,8 @@
 /**
- * Presence Manager
- * يدير حالة الحضور للمستخدمين المتصلين في كل غرفة
+ * Presence Manager (Stateless using Redis)
+ * يدير حالة الحضور للمستخدمين المتصلين في كل غرفة عبر Redis
  */
+import { redis } from "../services/redis";
 
 export type OnlineUser = {
   id: string;
@@ -17,11 +18,10 @@ export type OnlineUser = {
   connectedAt: string;
 };
 
-// المستخدمون المتصلون: socketId → بيانات المستخدم
-const connectedUsers = new Map<string, OnlineUser>();
-
-// أعضاء كل غرفة: roomId → Set<socketId>
-const roomMembers = new Map<string, Set<string>>();
+// مفاتيح Redis
+const getSocketKey = (socketId: string) => `socket:presence:${socketId}`;
+const getRoomKey = (roomId: string) => `room:members:${roomId}`;
+const ONLINE_SOCKETS_KEY = "online:sockets";
 
 function getPresenceIdentity(user: Pick<OnlineUser, "id" | "username" | "role">): string {
   const id = String(user.id || "").trim();
@@ -33,11 +33,17 @@ function getPresenceIdentity(user: Pick<OnlineUser, "id" | "username" | "role">)
   return "";
 }
 
-function getDedupedOnlineUsers(): OnlineUser[] {
+async function getDedupedOnlineUsers(): Promise<OnlineUser[]> {
+  const socketIds = await redis.smembers(ONLINE_SOCKETS_KEY);
+  if (socketIds.length === 0) return [];
+
+  const usersPromises = socketIds.map((sid) => getConnectedUser(sid));
+  const users = (await Promise.all(usersPromises)).filter((u): u is OnlineUser => u !== undefined);
+
   const byIdentity = new Map<string, OnlineUser>();
   const guests: OnlineUser[] = [];
 
-  for (const user of connectedUsers.values()) {
+  for (const user of users) {
     const identity = getPresenceIdentity(user);
     if (!identity) {
       guests.push(user);
@@ -56,26 +62,36 @@ function getDedupedOnlineUsers(): OnlineUser[] {
 /**
  * يضيف مستخدم متصل
  */
-export function addConnectedUser(socketId: string, user: Omit<OnlineUser, "socketId">): void {
-  connectedUsers.set(socketId, { ...user, socketId });
+export async function addConnectedUser(socketId: string, user: Omit<OnlineUser, "socketId">): Promise<void> {
+  const key = getSocketKey(socketId);
+  const data = {
+    id: String(user.id),
+    username: String(user.username),
+    role: String(user.role),
+    avatar: String(user.avatar),
+    countryCode: String(user.countryCode),
+    avatarFrameUrl: String(user.avatarFrameUrl),
+    giftIconUrl: String(user.giftIconUrl),
+    messageBubbleStyle: String(user.messageBubbleStyle),
+    roomId: String(user.roomId),
+    connectedAt: String(user.connectedAt),
+  };
+
+  await redis.hset(key, data);
+  await redis.expire(key, 86400); // 24 ساعة كحد أقصى للسلامة العامة
+  await redis.sadd(ONLINE_SOCKETS_KEY, socketId);
 }
 
 /**
  * يزيل مستخدم عند قطع الاتصال
  */
-export function removeConnectedUser(socketId: string): OnlineUser | undefined {
-  const user = connectedUsers.get(socketId);
+export async function removeConnectedUser(socketId: string): Promise<OnlineUser | undefined> {
+  const user = await getConnectedUser(socketId);
   if (user) {
-    connectedUsers.delete(socketId);
-    // إزالته من الغرفة
+    await redis.del(getSocketKey(socketId));
+    await redis.srem(ONLINE_SOCKETS_KEY, socketId);
     if (user.roomId) {
-      const members = roomMembers.get(user.roomId);
-      if (members) {
-        members.delete(socketId);
-        if (members.size === 0) {
-          roomMembers.delete(user.roomId);
-        }
-      }
+      await redis.srem(getRoomKey(user.roomId), socketId);
     }
   }
   return user;
@@ -84,84 +100,84 @@ export function removeConnectedUser(socketId: string): OnlineUser | undefined {
 /**
  * يضيف مستخدم لغرفة معينة
  */
-export function joinRoom(socketId: string, roomId: string): void {
-  const user = connectedUsers.get(socketId);
+export async function joinRoom(socketId: string, roomId: string): Promise<void> {
+  const user = await getConnectedUser(socketId);
   if (!user) return;
 
   // إزالة من الغرفة السابقة
   if (user.roomId && user.roomId !== roomId) {
-    leaveRoom(socketId);
+    await leaveRoom(socketId);
   }
 
-  user.roomId = roomId;
-
-  if (!roomMembers.has(roomId)) {
-    roomMembers.set(roomId, new Set());
-  }
-  roomMembers.get(roomId)!.add(socketId);
+  await redis.hset(getSocketKey(socketId), "roomId", roomId);
+  await redis.sadd(getRoomKey(roomId), socketId);
 }
 
 /**
  * يزيل مستخدم من غرفته الحالية
  */
-export function leaveRoom(socketId: string): string | undefined {
-  const user = connectedUsers.get(socketId);
+export async function leaveRoom(socketId: string): Promise<string | undefined> {
+  const user = await getConnectedUser(socketId);
   if (!user || !user.roomId) return undefined;
 
   const roomId = user.roomId;
-  const members = roomMembers.get(roomId);
-  if (members) {
-    members.delete(socketId);
-    if (members.size === 0) {
-      roomMembers.delete(roomId);
-    }
-  }
+  await redis.srem(getRoomKey(roomId), socketId);
+  await redis.hset(getSocketKey(socketId), "roomId", "");
 
-  user.roomId = "";
   return roomId;
 }
 
 /**
  * يحصل على قائمة أعضاء غرفة معينة
  */
-export function getRoomMembers(roomId: string): OnlineUser[] {
-  const memberIds = roomMembers.get(roomId);
-  if (!memberIds) return [];
+export async function getRoomMembers(roomId: string): Promise<OnlineUser[]> {
+  const socketIds = await redis.smembers(getRoomKey(roomId));
+  if (socketIds.length === 0) return [];
 
-  const members: OnlineUser[] = [];
-  for (const socketId of memberIds) {
-    const user = connectedUsers.get(socketId);
-    if (user) {
-      members.push(user);
-    }
-  }
-  return members;
+  const usersPromises = socketIds.map((sid) => getConnectedUser(sid));
+  return (await Promise.all(usersPromises)).filter((u): u is OnlineUser => u !== undefined);
 }
 
 /**
  * يحصل على عدد أعضاء غرفة
  */
-export function getRoomMemberCount(roomId: string): number {
-  return roomMembers.get(roomId)?.size ?? 0;
+export async function getRoomMemberCount(roomId: string): Promise<number> {
+  return await redis.scard(getRoomKey(roomId));
 }
 
 /**
  * يحصل على كل المستخدمين المتصلين
  */
-export function getAllOnlineUsers(): OnlineUser[] {
-  return getDedupedOnlineUsers();
+export async function getAllOnlineUsers(): Promise<OnlineUser[]> {
+  return await getDedupedOnlineUsers();
 }
 
 /**
  * يحصل على عدد المتصلين الكلي
  */
-export function getTotalOnlineCount(): number {
-  return getDedupedOnlineUsers().length;
+export async function getTotalOnlineCount(): Promise<number> {
+  const deduped = await getDedupedOnlineUsers();
+  return deduped.length;
 }
 
 /**
  * يحصل على بيانات مستخدم متصل بواسطة socketId
  */
-export function getConnectedUser(socketId: string): OnlineUser | undefined {
-  return connectedUsers.get(socketId);
+export async function getConnectedUser(socketId: string): Promise<OnlineUser | undefined> {
+  const data = await redis.hgetall(getSocketKey(socketId));
+  if (!data || Object.keys(data).length === 0) return undefined;
+  return {
+    id: data.id,
+    socketId,
+    username: data.username,
+    role: data.role,
+    avatar: data.avatar,
+    countryCode: data.countryCode,
+    avatarFrameUrl: data.avatarFrameUrl,
+    giftIconUrl: data.giftIconUrl,
+    messageBubbleStyle: data.messageBubbleStyle,
+    roomId: data.roomId,
+    connectedAt: data.connectedAt,
+  };
 }
+

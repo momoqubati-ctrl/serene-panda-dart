@@ -343,3 +343,43 @@ export const influenceScores = pgTable("influence_scores", {
   trustPropagation: numeric("trust_propagation", { precision: 10, scale: 4 }).default("0").notNull(),
   calculatedAt: timestamp("calculated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// --- 6. ROLES AND PERMISSIONS ENGINE ---
+export const roles = pgTable("roles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  legacyName: varchar("legacy_name", { length: 120 }),
+  name: varchar("name", { length: 120 }).notNull(),
+  rank: integer("rank").default(0).notNull(),
+  iconUrl: text("icon_url").default("").notNull(),
+  isSystem: boolean("is_system").default(false).notNull(),
+  autoEnabled: boolean("auto_enabled").default(false).notNull(),
+  autoPromote: boolean("auto_promote").default(false).notNull(),
+  autoPoints: integer("auto_points").default(0).notNull(),
+  legacyMetadata: jsonb("legacy_metadata").default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("roles_name_idx").on(table.name),
+  index("roles_rank_idx").on(table.rank),
+]);
+
+export const rolePermissions = pgTable("role_permissions", {
+  roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }).notNull(),
+  permissionKey: varchar("permission_key", { length: 120 }).notNull(),
+  permissionValue: jsonb("permission_value").default(true).notNull(),
+  source: varchar("source", { length: 40 }).default("legacy_powers").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.roleId, table.permissionKey] })
+]);
+
+export const userRoleAssignments = pgTable("user_role_assignments", {
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }).notNull(),
+  assignedBy: uuid("assigned_by").references(() => users.id, { onDelete: "set null" }),
+  startsAt: timestamp("starts_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  legacyMetadata: jsonb("legacy_metadata").default({}).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.roleId] })
+]);
+

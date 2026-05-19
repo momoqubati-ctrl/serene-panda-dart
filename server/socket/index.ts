@@ -8,8 +8,10 @@ import { registerRoomHandlers } from "./roomHandlers";
 import { registerPresenceHandlers } from "./presenceHandlers";
 import { registerPrivateHandlers } from "./privateHandlers";
 import { configureSocketGateway, registerSocketConnection } from "./SocketGateway";
+import { initializeSocketBroker } from "./SocketBroker";
 
 let io: SocketIOServer | null = null;
+
 
 /**
  * ينشئ ويهيئ خادم Socket.io
@@ -36,6 +38,7 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
   });
 
   configureSocketGateway(io, { shardId: process.env.SOCKET_SHARD_ID ?? "local" });
+  initializeSocketBroker(io);
 
   io.on("connection", (socket) => {
     const username = socket.handshake.auth?.username || "زائر";

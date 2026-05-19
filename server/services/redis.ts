@@ -22,6 +22,10 @@ type RedisCommandClient = {
   zadd: (...args: any[]) => Promise<number>;
   zincrby: (...args: any[]) => Promise<string>;
   zrevrange: (...args: any[]) => Promise<string[]>;
+  sadd: (...args: any[]) => Promise<number>;
+  srem: (...args: any[]) => Promise<number>;
+  smembers: (...args: any[]) => Promise<string[]>;
+  scard: (...args: any[]) => Promise<number>;
 };
 
 function createNoopRedis(): RedisCommandClient {
@@ -43,10 +47,14 @@ function createNoopRedis(): RedisCommandClient {
     zadd: async () => 0,
     zincrby: async () => "0",
     zrevrange: async () => [],
+    sadd: async () => 0,
+    srem: async () => 0,
+    smembers: async () => [],
+    scard: async () => 0,
   };
 }
 
-function createRedisClient(): RedisCommandClient {
+export function createRedisClient(): RedisCommandClient {
   if (!redisEnabled) {
     return createNoopRedis();
   }
@@ -107,6 +115,7 @@ export const KEYS = {
   feedCache: (userId: string) => `feed:cache:${userId}`,
   rankingCache: (scope: string) => `ranking:${scope}`,
   recommendationCache: (userId: string) => `recommendation:cache:${userId}`,
+  permissions: (userId: string) => `permissions:${userId}`,
 };
 
 /**

@@ -3,7 +3,8 @@
  * يدير أحداث WebSocket المتعلقة بالغرف والرسائل مع دمج نظام الفلترة
  */
 import type { Server, Socket } from "socket.io";
-import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount, getConnectedUser } from "./presenceManager";
+import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount } from "./presenceManager";
+import { publishSocketEvent } from "./SocketBroker";
 import { listRooms, addMessage, listMessages } from "../services/chatStore";
 import { processText } from "../services/filterService";
 import { eventBus } from "../core/events/EventBus";
@@ -24,17 +25,17 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   /**
    * دخول غرفة
    */
-  socket.on("join_room", (data: { roomId: string }, callback?: (res: any) => void) => {
+  socket.on("join_room", async (data: { roomId: string }, callback?: (res: any) => void) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) {
       callback?.({ success: false, message: "معرف الغرفة مطلوب" });
       return;
     }
 
-    const previousRoomId = getConnectedUser(socket.id)?.roomId;
+    const previousRoomId = socket.data.user.roomId;
     if (previousRoomId && previousRoomId !== roomId) {
       socket.leave(`room:${previousRoomId}`);
-      leaveRoom(socket.id);
+      await leaveRoom(socket.id);
       eventBus.publish({
         type: "room.left",
         stream: "rooms",
@@ -43,16 +44,20 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         payload: { roomId: previousRoomId, username: user.username },
         metadata: { roomId: previousRoomId, source: "socket.roomHandlers", shardKey: previousRoomId },
       }).catch(err => console.error("EventBus publish failed (room.left):", err));
-      io.to(`room:${previousRoomId}`).emit("user_left", {
+
+      const memberCount = await getRoomMemberCount(previousRoomId);
+      await publishSocketEvent(previousRoomId, "user_left", {
         socketId: socket.id,
         username: user.username,
         roomId: previousRoomId,
-        memberCount: getRoomMemberCount(previousRoomId),
+        memberCount,
       });
     }
 
     socket.join(`room:${roomId}`);
-    joinRoom(socket.id, roomId);
+    await joinRoom(socket.id, roomId);
+    socket.data.user.roomId = roomId;
+
     eventBus.publish({
       type: "room.joined",
       stream: "rooms",
@@ -62,7 +67,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       metadata: { roomId, source: "socket.roomHandlers", shardKey: roomId },
     }).catch(err => console.error("EventBus publish failed (room.joined):", err));
 
-    const members = getRoomMembers(roomId);
+    const members = await getRoomMembers(roomId);
     const messages = listMessages(roomId);
 
     callback?.({
@@ -81,7 +86,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       memberCount: members.length,
     });
 
-    socket.to(`room:${roomId}`).emit("user_joined", {
+    await publishSocketEvent(roomId, "user_joined", {
       socketId: socket.id,
       user: {
         id: user.id,
@@ -93,7 +98,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         giftIconUrl: user.giftIconUrl,
       },
       memberCount: members.length,
-    });
+    }, socket.id);
   });
 
   /**
@@ -135,7 +140,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         text: filterResult.filteredText,
       });
 
-      io.to(`room:${roomId}`).emit("new_message", {
+      await publishSocketEvent(roomId, "new_message", {
         roomId,
         message,
       });
@@ -147,38 +152,41 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }
   });
 
-  socket.on("typing", (data: { roomId: string }) => {
+  socket.on("typing", async (data: { roomId: string }) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) return;
     const key = `${socket.id}:${roomId}`;
     if (typingTimers.has(key)) return;
     typingTimers.set(key, setTimeout(() => typingTimers.delete(key), TYPING_THROTTLE_MS));
-    socket.to(`room:${roomId}`).emit("user_typing", { socketId: socket.id, username: user.username, roomId });
+    await publishSocketEvent(roomId, "user_typing", { socketId: socket.id, username: user.username, roomId }, socket.id);
   });
 
-  socket.on("stop_typing", (data: { roomId: string }) => {
+  socket.on("stop_typing", async (data: { roomId: string }) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) return;
-    socket.to(`room:${roomId}`).emit("user_stop_typing", { socketId: socket.id, username: user.username, roomId });
+    await publishSocketEvent(roomId, "user_stop_typing", { socketId: socket.id, username: user.username, roomId }, socket.id);
   });
 
-  socket.on("disconnect", () => {
-    const currentUser = getConnectedUser(socket.id);
-    if (currentUser?.roomId) {
+  socket.on("disconnect", async () => {
+    const roomId = socket.data.user.roomId;
+    if (roomId) {
       eventBus.publish({
         type: "room.left",
         stream: "rooms",
         actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
-        target: { id: currentUser.roomId, type: "room", roomId: currentUser.roomId },
-        payload: { roomId: currentUser.roomId, username: user.username, disconnected: true },
-        metadata: { roomId: currentUser.roomId, source: "socket.roomHandlers.disconnect", shardKey: currentUser.roomId },
+        target: { id: roomId, type: "room", roomId },
+        payload: { roomId, username: user.username, disconnected: true },
+        metadata: { roomId, source: "socket.roomHandlers.disconnect", shardKey: roomId },
       }).catch(err => console.error("EventBus publish failed (room.left on disconnect):", err));
-      io.to(`room:${currentUser.roomId}`).emit("user_left", {
+
+      const memberCount = await getRoomMemberCount(roomId);
+      await publishSocketEvent(roomId, "user_left", {
         socketId: socket.id,
         username: user.username,
-        roomId: currentUser.roomId,
-        memberCount: Math.max(0, getRoomMemberCount(currentUser.roomId) - 1),
+        roomId,
+        memberCount: Math.max(0, memberCount),
       });
     }
   });
 }
+
