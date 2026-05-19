@@ -23,6 +23,12 @@ type ChatMessage = {
   color: string;
   isOwner?: boolean;
   isSystem?: boolean;
+  systemType?: "join" | "leave" | "transition";
+  targetRoom?: {
+    id: string;
+    name: string;
+    image: string;
+  };
   createdAt: string;
   pending?: boolean;
   failed?: boolean;
@@ -90,7 +96,7 @@ const formatMessageTime = (value: string) =>
   }).format(new Date(value));
 
 const getMessageBubbleClass = (msg: ChatMessage) => {
-  if (msg.isSystem) return "border-teal-100 bg-teal-50 text-teal-700";
+  if (msg.isSystem) return "border-teal-100/70 bg-teal-50/50 dark:border-teal-900/30 dark:bg-teal-950/20 text-teal-800 dark:text-teal-400";
   if (msg.failed) return "border-red-100 bg-red-50 text-red-700";
   if (msg.messageBubbleStyle === "soft") return "border-blue-100 bg-blue-50 text-foreground";
   if (msg.messageBubbleStyle === "dark") return "border-slate-800 bg-slate-900 text-white";
@@ -162,7 +168,7 @@ const ChatInputArea = React.memo(({ roomId, onSendMessage }: { roomId: string, o
   );
 });
 
-const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
+const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [memberCount, setMemberCount] = useState(0);
@@ -249,18 +255,40 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
       }, 2000);
     };
 
-    const onSystemMessage = (data: { text: string; roomId: string }) => {
+    const onSystemMessage = (data: {
+      text: string;
+      roomId: string;
+      systemType?: "join" | "leave" | "transition";
+      user?: {
+        id: string;
+        username: string;
+        role: string;
+        avatar: string;
+        countryCode?: string;
+        avatarFrameUrl?: string;
+        giftIconUrl?: string;
+      };
+      targetRoom?: {
+        id: string;
+        name: string;
+        image: string;
+      };
+    }) => {
       if (data.roomId === roomId) {
         mergeMessages([
           {
-            id: `sys-${Date.now()}`,
-            user: "النظام",
-            role: "system",
+            id: `sys-${Date.now()}-${Math.random()}`,
+            user: data.user?.username || "النظام",
+            role: (data.user?.role as any) || "system",
             text: data.text,
-            avatar: "/pic.png",
-            countryCode: "SA",
-            color: "text-teal-600",
+            avatar: data.user?.avatar || "/pic.png",
+            countryCode: data.user?.countryCode || "SA",
+            avatarFrameUrl: data.user?.avatarFrameUrl || "",
+            giftIconUrl: data.user?.giftIconUrl || "",
+            color: data.user?.role === "admin" ? "text-red-600" : "text-teal-600",
             isSystem: true,
+            systemType: data.systemType,
+            targetRoom: data.targetRoom,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -477,6 +505,33 @@ const RoomPage = ({ room, onBack, isEmbedded = false }: any) => {
               </div>
               <div className={`relative inline-block max-w-[90%] rounded-2xl rounded-tr-none border p-2.5 shadow-sm ${getMessageBubbleClass(msg)}`}>
                 <p className="break-words text-xs font-bold leading-relaxed">{msg.text}</p>
+                {msg.isSystem && msg.systemType === "transition" && msg.targetRoom && (
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200/50 bg-white/40 dark:border-slate-700/50 dark:bg-slate-900/40 p-3 shadow-md backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:bg-white/60 dark:hover:bg-slate-900/60 flex items-center justify-between gap-4 max-w-[280px]">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-10 w-10 rounded-xl border border-white dark:border-slate-800 shadow-sm shrink-0">
+                        <AvatarImage src={msg.targetRoom.image} />
+                        <AvatarFallback>{msg.targetRoom.name?.[0] || "غ"}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-right min-w-0">
+                        <h5 className="text-[11px] font-black text-slate-800 dark:text-white truncate leading-tight">{msg.targetRoom.name}</h5>
+                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500">غرفة محادثة نشطة</span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => onSelectRoom?.({
+                        id: msg.targetRoom?.id,
+                        name: msg.targetRoom?.name,
+                        image: msg.targetRoom?.image,
+                        owner: "إدارة الموقع"
+                      })}
+                      className="h-7 rounded-lg bg-primary hover:bg-primary/95 text-[9px] font-black text-white px-3 flex items-center gap-1 shadow-md shadow-primary/10 transition-all active:scale-95 shrink-0"
+                    >
+                      <span>انضمام</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

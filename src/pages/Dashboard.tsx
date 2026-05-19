@@ -160,7 +160,7 @@ const Dashboard = () => {
           {activeTab === "cpanel" ? (
             <AdminDashboard section={adminSection} />
           ) : activeRoom ? (
-            <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} isEmbedded />
+            <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} onSelectRoom={setActiveRoom} isEmbedded />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px]">
               <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">

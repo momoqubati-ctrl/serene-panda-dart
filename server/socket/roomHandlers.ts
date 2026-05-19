@@ -34,13 +34,17 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
     const previousRoomId = socket.data.user.roomId;
     
-    // Resolve room names for system messages
+    // Resolve room names and images for system messages
     let roomName = roomId;
+    let roomImage = "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop";
     let prevRoomName = previousRoomId || "";
     try {
       const rooms = await listRooms();
       const currentRoom = rooms.find((r: any) => r.id === roomId);
-      if (currentRoom) roomName = currentRoom.name;
+      if (currentRoom) {
+        roomName = currentRoom.name;
+        roomImage = currentRoom.image || roomImage;
+      }
       if (previousRoomId) {
         const oldRoom = rooms.find((r: any) => r.id === previousRoomId);
         if (oldRoom) prevRoomName = oldRoom.name;
@@ -71,8 +75,23 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
       // Broadcast transition system message to previous room
       await publishSocketEvent(previousRoomId, "system_message", {
-        text: `انتقل ${user.username} إلى الغرفة: ${roomName}`,
-        roomId: previousRoomId
+        text: `انتقل إلى الغرفة: ${roomName}`,
+        roomId: previousRoomId,
+        systemType: "transition",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+        },
+        targetRoom: {
+          id: roomId,
+          name: roomName,
+          image: roomImage,
+        }
       });
 
       // Broadcast live counter update globally for the previous room
@@ -131,13 +150,33 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     // Broadcast transition/entrance system message to the new room
     if (previousRoomId && previousRoomId !== roomId) {
       await publishSocketEvent(roomId, "system_message", {
-        text: `دخل ${user.username} الغرفة (انتقل من: ${prevRoomName})`,
-        roomId
+        text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
+        roomId,
+        systemType: "join",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+        }
       });
     } else {
       await publishSocketEvent(roomId, "system_message", {
-        text: `دخل ${user.username} الغرفة`,
-        roomId
+        text: `دخل الغرفة`,
+        roomId,
+        systemType: "join",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+        }
       });
     }
   });
@@ -226,8 +265,18 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
     // Broadcast leave system message
     await publishSocketEvent(roomId, "system_message", {
-      text: `غادر ${user.username} الغرفة`,
-      roomId
+      text: `غادر الغرفة`,
+      roomId,
+      systemType: "leave",
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        avatar: user.avatar,
+        countryCode: user.countryCode,
+        avatarFrameUrl: user.avatarFrameUrl,
+        giftIconUrl: user.giftIconUrl,
+      }
     });
 
     // Broadcast live counter update globally
@@ -256,8 +305,18 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
       // Broadcast leave system message on disconnect
       await publishSocketEvent(roomId, "system_message", {
-        text: `غادر ${user.username} الغرفة (انقطع الاتصال)`,
-        roomId
+        text: `غادر الغرفة (انقطع الاتصال)`,
+        roomId,
+        systemType: "leave",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+        }
       });
     }
   });
