@@ -305,7 +305,7 @@ export const eventSnapshots = pgTable("event_snapshots", {
 
 export const eventReplays = pgTable("event_replays", {
   id: uuid("id").defaultRandom().primaryKey(),
-  requestedBy: uuid("requested_by").references(() => users.id, { onDelete: "set null" }),
+  requestedBy: varchar("requested_by", { length: 255 }),
   status: varchar("status", { length: 40 }).default("pending").notNull(),
   filter: jsonb("filter").default({}).notNull(),
   replayedCount: integer("replayed_count").default(0).notNull(),
@@ -337,7 +337,7 @@ export const interactionHeat = pgTable("interaction_heat", {
 ]);
 
 export const influenceScores = pgTable("influence_scores", {
-  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 255 }).primaryKey(),
   roomInfluence: numeric("room_influence", { precision: 10, scale: 4 }).default("0").notNull(),
   networkInfluence: numeric("network_influence", { precision: 10, scale: 4 }).default("0").notNull(),
   trustPropagation: numeric("trust_propagation", { precision: 10, scale: 4 }).default("0").notNull(),

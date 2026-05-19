@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS event_snapshots (
 
 CREATE TABLE IF NOT EXISTS event_replays (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  requested_by uuid NULL REFERENCES users(id) ON DELETE SET NULL,
+  requested_by varchar(255) NULL,
   status varchar(40) NOT NULL DEFAULT 'pending',
   filter jsonb NOT NULL DEFAULT '{}'::jsonb,
   replayed_count integer NOT NULL DEFAULT 0,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS interaction_heat (
 );
 
 CREATE TABLE IF NOT EXISTS influence_scores (
-  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_id varchar(255) PRIMARY KEY,
   room_influence numeric(10,4) NOT NULL DEFAULT 0,
   network_influence numeric(10,4) NOT NULL DEFAULT 0,
   trust_propagation numeric(10,4) NOT NULL DEFAULT 0,
