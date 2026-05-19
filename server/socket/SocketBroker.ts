@@ -3,11 +3,19 @@
  * يوزع أحداث WebSocket بين خوادم متعددة باستخدام Redis Pub/Sub بدون الحاجة لتثبيت حزم خارجية
  */
 import { Server } from "socket.io";
-import { createRedisClient } from "../services/redis";
+import { createRedisClient, isRedisEnabled } from "../services/redis";
 
 let subClient: any = null;
+let localIo: Server | null = null;
 
 export function initializeSocketBroker(io: Server): void {
+  localIo = io;
+
+  if (!isRedisEnabled) {
+    console.log("[SocketBroker] Redis is disabled. Skipping Redis Pub/Sub subscriber broker.");
+    return;
+  }
+
   subClient = createRedisClient();
 
   // الاشتراك في قنوات الغرف العامة
@@ -38,8 +46,21 @@ export function initializeSocketBroker(io: Server): void {
 }
 
 export async function publishSocketEvent(roomId: string, event: string, payload: any, excludeSocketId?: string): Promise<void> {
+  const redisModule = await import("../services/redis");
+  
+  if (!redisModule.isRedisEnabled) {
+    // Fallback to local emission if Redis is disabled
+    if (localIo) {
+      let target = localIo.to(`room:${roomId}`);
+      if (excludeSocketId) {
+        target = target.except(excludeSocketId) as any;
+      }
+      target.emit(event, payload);
+    }
+    return;
+  }
+
   const channel = `pubsub:room:${roomId}`;
   const data = JSON.stringify({ event, payload, excludeSocketId });
-  const redisModule = await import("../services/redis");
   await redisModule.redis.publish(channel, data);
 }
