@@ -24,9 +24,9 @@ export const hasPermission = async (userId: string, permission: AdminPermission)
       `SELECT rp.permission_value 
        FROM user_role_assignments ura
        JOIN role_permissions rp ON rp.role_id = ura.role_id
-       WHERE ura.user_id = (SELECT id FROM users WHERE idreg = $1 OR id::text = $1 LIMIT 1)
-       AND rp.permission_key = $2`,
-      [userId, permission]
+       WHERE ura.user_idreg = (SELECT idreg FROM users WHERE idreg = $1::integer OR id = $2 OR uid = $2 LIMIT 1)
+       AND rp.permission_key = $3`,
+      [Number.isInteger(Number(userId)) ? Number(userId) : 0, String(userId), permission]
     );
 
     if (result.rowCount === 0) return false;
@@ -74,8 +74,15 @@ export const logAdminAudit = async (params: {
   try {
     await dbPool.query(
       `INSERT INTO admin_audit_logs (actor_id, action, target_type, target_id, metadata)
-       VALUES ((SELECT id FROM users WHERE idreg = $1 OR id::text = $1 LIMIT 1), $2, $3, $4, $5::jsonb)`,
-      [params.actorId, params.action, params.targetType || null, params.targetId || null, JSON.stringify(params.metadata || {})]
+       VALUES ((SELECT id FROM users WHERE idreg = $1::integer OR id = $2 OR uid = $2 LIMIT 1), $3, $4, $5, $6::jsonb)`,
+      [
+        Number.isInteger(Number(params.actorId)) ? Number(params.actorId) : 0,
+        String(params.actorId),
+        params.action,
+        params.targetType || null,
+        params.targetId || null,
+        JSON.stringify(params.metadata || {}),
+      ],
     );
   } catch (err) {
     console.error("Audit log error:", err);
