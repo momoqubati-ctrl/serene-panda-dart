@@ -49,6 +49,7 @@ export function viteSocketIO(): Plugin {
 
       const connectedUsers = new Map<string, OnlineUser>();
       const roomMembersMap = new Map<string, Set<string>>();
+      const pendingLeaves = new Map<string, { roomId: string; timeout: NodeJS.Timeout }>();
 
       function addUser(socketId: string, data: Omit<OnlineUser, "socketId">) {
         connectedUsers.set(socketId, { ...data, socketId });
@@ -159,15 +160,25 @@ export function viteSocketIO(): Plugin {
           const roomId = String(data?.roomId || "").trim();
           if (!roomId) { callback?.({ success: false, message: "معرف الغرفة مطلوب" }); return; }
 
-          const prev = connectedUsers.get(socket.id)?.roomId;
+          const pendingLeave = pendingLeaves.get(socket.id);
+          let prev = connectedUsers.get(socket.id)?.roomId;
+          if (pendingLeave) {
+            clearTimeout(pendingLeave.timeout);
+            prev = pendingLeave.roomId;
+            pendingLeaves.delete(socket.id);
+          }
 
-          // Resolve room names for system messages
+          // Resolve room names and images for system messages
           let roomName = roomId;
+          let roomImage = "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop";
           let prevRoomName = prev || "";
           try {
             const rooms = await chatStore.listRooms();
             const currentRoom = rooms.find((r: any) => r.id === roomId);
-            if (currentRoom) roomName = currentRoom.name;
+            if (currentRoom) {
+              roomName = currentRoom.name;
+              roomImage = currentRoom.image || roomImage;
+            }
             if (prev) {
               const oldRoom = rooms.find((r: any) => r.id === prev);
               if (oldRoom) prevRoomName = oldRoom.name;
@@ -183,8 +194,23 @@ export function viteSocketIO(): Plugin {
             
             // Broadcast transition message to previous room
             io!.to(`room:${prev}`).emit("system_message", {
-              text: `انتقل ${username} إلى الغرفة: ${roomName}`,
-              roomId: prev
+              text: `قام بالانتقال إلى الغرفة: ${roomName}`,
+              roomId: prev,
+              systemType: "transition",
+              user: {
+                id: userData.id,
+                username: userData.username,
+                role: userData.role,
+                avatar: userData.avatar,
+                countryCode: userData.countryCode,
+                avatarFrameUrl: userData.avatarFrameUrl,
+                giftIconUrl: userData.giftIconUrl,
+              },
+              targetRoom: {
+                id: roomId,
+                name: roomName,
+                image: roomImage,
+              }
             });
             
             // Broadcast live counter update globally for the previous room
@@ -221,13 +247,33 @@ export function viteSocketIO(): Plugin {
             // Broadcast entrance/transition message to new room
             if (prev && prev !== roomId) {
               io!.to(`room:${roomId}`).emit("system_message", {
-                text: `دخل ${username} الغرفة (انتقل من: ${prevRoomName})`,
-                roomId
+                text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
+                roomId,
+                systemType: "join",
+                user: {
+                  id: userData.id,
+                  username: userData.username,
+                  role: userData.role,
+                  avatar: userData.avatar,
+                  countryCode: userData.countryCode,
+                  avatarFrameUrl: userData.avatarFrameUrl,
+                  giftIconUrl: userData.giftIconUrl,
+                }
               });
             } else {
               io!.to(`room:${roomId}`).emit("system_message", {
-                text: `دخل ${username} الغرفة`,
-                roomId
+                text: `دخل الغرفة`,
+                roomId,
+                systemType: "join",
+                user: {
+                  id: userData.id,
+                  username: userData.username,
+                  role: userData.role,
+                  avatar: userData.avatar,
+                  countryCode: userData.countryCode,
+                  avatarFrameUrl: userData.avatarFrameUrl,
+                  giftIconUrl: userData.giftIconUrl,
+                }
               });
             }
 
@@ -243,18 +289,43 @@ export function viteSocketIO(): Plugin {
         socket.on("leave_room", (data: any) => {
           const roomId = String(data?.roomId || "").trim();
           if (!roomId) return;
-          socket.leave(`room:${roomId}`);
-          leaveUserFromRoom(socket.id);
-          io!.to(`room:${roomId}`).emit("user_left", { socketId: socket.id, username, roomId, memberCount: getRoomCount(roomId) });
-          
-          // Broadcast leave system message
-          io!.to(`room:${roomId}`).emit("system_message", {
-            text: `غادر ${username} الغرفة`,
-            roomId
-          });
 
-          // Broadcast live counter update globally
-          io!.emit("room_count_update", { roomId, memberCount: getRoomCount(roomId) });
+          if (pendingLeaves.has(socket.id)) {
+            clearTimeout(pendingLeaves.get(socket.id)!.timeout);
+            pendingLeaves.delete(socket.id);
+          }
+
+          const runLeave = () => {
+            pendingLeaves.delete(socket.id);
+            socket.leave(`room:${roomId}`);
+            leaveUserFromRoom(socket.id);
+            io!.to(`room:${roomId}`).emit("user_left", { socketId: socket.id, username, roomId, memberCount: getRoomCount(roomId) });
+            
+            // Broadcast leave system message
+            io!.to(`room:${roomId}`).emit("system_message", {
+              text: `غادر الغرفة`,
+              roomId,
+              systemType: "leave",
+              user: {
+                id: userData.id,
+                username: userData.username,
+                role: userData.role,
+                avatar: userData.avatar,
+                countryCode: userData.countryCode,
+                avatarFrameUrl: userData.avatarFrameUrl,
+                giftIconUrl: userData.giftIconUrl,
+              }
+            });
+
+            // Broadcast live counter update globally
+            io!.emit("room_count_update", { roomId, memberCount: getRoomCount(roomId) });
+          };
+
+          const timeout = setTimeout(() => {
+            runLeave();
+          }, 250);
+
+          pendingLeaves.set(socket.id, { roomId, timeout });
         });
 
         socket.on("room_message", async (data: any, callback?: any) => {
@@ -446,14 +517,28 @@ export function viteSocketIO(): Plugin {
 
         // ===== Disconnect =====
         socket.on("disconnect", () => {
+          if (pendingLeaves.has(socket.id)) {
+            clearTimeout(pendingLeaves.get(socket.id)!.timeout);
+            pendingLeaves.delete(socket.id);
+          }
           const user = connectedUsers.get(socket.id);
           if (user?.roomId) {
             io!.to(`room:${user.roomId}`).emit("user_left", { socketId: socket.id, username, roomId: user.roomId, memberCount: Math.max(0, getRoomCount(user.roomId) - 1) });
             
             // Broadcast leave system message (disconnect)
             io!.to(`room:${user.roomId}`).emit("system_message", {
-              text: `غادر ${username} الغرفة (انقطع الاتصال)`,
-              roomId: user.roomId
+              text: `غادر الغرفة (انقطع الاتصال)`,
+              roomId: user.roomId,
+              systemType: "leave",
+              user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                avatar: user.avatar,
+                countryCode: user.countryCode,
+                avatarFrameUrl: user.avatarFrameUrl,
+                giftIconUrl: user.giftIconUrl,
+              }
             });
 
             // Broadcast live counter update globally

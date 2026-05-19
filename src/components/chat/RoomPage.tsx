@@ -96,7 +96,15 @@ const formatMessageTime = (value: string) =>
   }).format(new Date(value));
 
 const getMessageBubbleClass = (msg: ChatMessage) => {
-  if (msg.isSystem) return "border-teal-100/70 bg-teal-50/50 dark:border-teal-900/30 dark:bg-teal-950/20 text-teal-800 dark:text-teal-400";
+  if (msg.isSystem) {
+    if (msg.systemType === "transition") {
+      return "border-indigo-100/70 bg-indigo-50/50 dark:border-indigo-900/30 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400";
+    }
+    if (msg.systemType === "leave") {
+      return "border-rose-100/70 bg-rose-50/50 dark:border-rose-900/30 dark:bg-rose-950/20 text-rose-800 dark:text-rose-400";
+    }
+    return "border-teal-100/70 bg-teal-50/50 dark:border-teal-900/30 dark:bg-teal-950/20 text-teal-800 dark:text-teal-400";
+  }
   if (msg.failed) return "border-red-100 bg-red-50 text-red-700";
   if (msg.messageBubbleStyle === "soft") return "border-blue-100 bg-blue-50 text-foreground";
   if (msg.messageBubbleStyle === "dark") return "border-slate-800 bg-slate-900 text-white";

@@ -12,6 +12,7 @@ import { bootstrapWorkers } from "../workers";
 
 const TYPING_THROTTLE_MS = 900;
 const typingTimers = new Map<string, NodeJS.Timeout>();
+const pendingLeaves = new Map<string, { roomId: string; timeout: NodeJS.Timeout }>();
 
 export function registerRoomHandlers(io: Server, socket: Socket): void {
   const user = socket.data.user;
@@ -32,7 +33,13 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       return;
     }
 
-    const previousRoomId = socket.data.user.roomId;
+    const pendingLeave = pendingLeaves.get(socket.id);
+    let previousRoomId = socket.data.user.roomId;
+    if (pendingLeave) {
+      clearTimeout(pendingLeave.timeout);
+      previousRoomId = pendingLeave.roomId;
+      pendingLeaves.delete(socket.id);
+    }
     
     // Resolve room names and images for system messages
     let roomName = roomId;
@@ -75,7 +82,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
       // Broadcast transition system message to previous room
       await publishSocketEvent(previousRoomId, "system_message", {
-        text: `انتقل إلى الغرفة: ${roomName}`,
+        text: `قام بالانتقال إلى الغرفة: ${roomName}`,
         roomId: previousRoomId,
         systemType: "transition",
         user: {
@@ -250,40 +257,59 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   socket.on("leave_room", async (data: { roomId: string }) => {
     const roomId = String(data?.roomId || "").trim();
     if (!roomId) return;
-    socket.leave(`room:${roomId}`);
-    await leaveRoom(socket.id);
-    if (socket.data.user.roomId === roomId) {
-      socket.data.user.roomId = "";
+
+    if (pendingLeaves.has(socket.id)) {
+      clearTimeout(pendingLeaves.get(socket.id)!.timeout);
+      pendingLeaves.delete(socket.id);
     }
-    const memberCount = await getRoomMemberCount(roomId);
-    await publishSocketEvent(roomId, "user_left", {
-      socketId: socket.id,
-      username: user.username,
-      roomId,
-      memberCount,
-    });
 
-    // Broadcast leave system message
-    await publishSocketEvent(roomId, "system_message", {
-      text: `غادر الغرفة`,
-      roomId,
-      systemType: "leave",
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        avatar: user.avatar,
-        countryCode: user.countryCode,
-        avatarFrameUrl: user.avatarFrameUrl,
-        giftIconUrl: user.giftIconUrl,
+    const runLeave = async () => {
+      pendingLeaves.delete(socket.id);
+      socket.leave(`room:${roomId}`);
+      await leaveRoom(socket.id);
+      if (socket.data.user.roomId === roomId) {
+        socket.data.user.roomId = "";
       }
-    });
+      const memberCount = await getRoomMemberCount(roomId);
+      await publishSocketEvent(roomId, "user_left", {
+        socketId: socket.id,
+        username: user.username,
+        roomId,
+        memberCount,
+      });
 
-    // Broadcast live counter update globally
-    await publishGlobalEvent("room_count_update", { roomId, memberCount });
+      // Broadcast leave system message
+      await publishSocketEvent(roomId, "system_message", {
+        text: `غادر الغرفة`,
+        roomId,
+        systemType: "leave",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+        }
+      });
+
+      // Broadcast live counter update globally
+      await publishGlobalEvent("room_count_update", { roomId, memberCount });
+    };
+
+    const timeout = setTimeout(() => {
+      runLeave().catch(err => console.error("Delayed leave failed:", err));
+    }, 250);
+
+    pendingLeaves.set(socket.id, { roomId, timeout });
   });
 
   socket.on("disconnect", async () => {
+    if (pendingLeaves.has(socket.id)) {
+      clearTimeout(pendingLeaves.get(socket.id)!.timeout);
+      pendingLeaves.delete(socket.id);
+    }
     const roomId = socket.data.user.roomId;
     if (roomId) {
       eventBus.publish({
