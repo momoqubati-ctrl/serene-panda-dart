@@ -4,7 +4,7 @@
  */
 import type { Server, Socket } from "socket.io";
 import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount } from "./presenceManager";
-import { publishSocketEvent } from "./SocketBroker";
+import { publishSocketEvent, publishGlobalEvent } from "./SocketBroker";
 import { listRooms, addMessage, listMessages } from "../services/chatStore";
 import { processText } from "../services/filterService";
 import { eventBus } from "../core/events/EventBus";
@@ -33,6 +33,22 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }
 
     const previousRoomId = socket.data.user.roomId;
+    
+    // Resolve room names for system messages
+    let roomName = roomId;
+    let prevRoomName = previousRoomId || "";
+    try {
+      const rooms = await listRooms();
+      const currentRoom = rooms.find((r: any) => r.id === roomId);
+      if (currentRoom) roomName = currentRoom.name;
+      if (previousRoomId) {
+        const oldRoom = rooms.find((r: any) => r.id === previousRoomId);
+        if (oldRoom) prevRoomName = oldRoom.name;
+      }
+    } catch (e) {
+      console.error("Error listing rooms inside join_room production resolver:", e);
+    }
+
     if (previousRoomId && previousRoomId !== roomId) {
       socket.leave(`room:${previousRoomId}`);
       await leaveRoom(socket.id);
@@ -52,6 +68,15 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         roomId: previousRoomId,
         memberCount,
       });
+
+      // Broadcast transition system message to previous room
+      await publishSocketEvent(previousRoomId, "system_message", {
+        text: `انتقل ${user.username} إلى الغرفة: ${roomName}`,
+        roomId: previousRoomId
+      });
+
+      // Broadcast live counter update globally for the previous room
+      await publishGlobalEvent("room_count_update", { roomId: previousRoomId, memberCount });
     }
 
     socket.join(`room:${roomId}`);
@@ -99,6 +124,22 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       },
       memberCount: members.length,
     }, socket.id);
+
+    // Broadcast live counter update globally for the joined room
+    await publishGlobalEvent("room_count_update", { roomId, memberCount: members.length });
+
+    // Broadcast transition/entrance system message to the new room
+    if (previousRoomId && previousRoomId !== roomId) {
+      await publishSocketEvent(roomId, "system_message", {
+        text: `دخل ${user.username} الغرفة (انتقل من: ${prevRoomName})`,
+        roomId
+      });
+    } else {
+      await publishSocketEvent(roomId, "system_message", {
+        text: `دخل ${user.username} الغرفة`,
+        roomId
+      });
+    }
   });
 
   /**
@@ -167,6 +208,32 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     await publishSocketEvent(roomId, "user_stop_typing", { socketId: socket.id, username: user.username, roomId }, socket.id);
   });
 
+  socket.on("leave_room", async (data: { roomId: string }) => {
+    const roomId = String(data?.roomId || "").trim();
+    if (!roomId) return;
+    socket.leave(`room:${roomId}`);
+    await leaveRoom(socket.id);
+    if (socket.data.user.roomId === roomId) {
+      socket.data.user.roomId = "";
+    }
+    const memberCount = await getRoomMemberCount(roomId);
+    await publishSocketEvent(roomId, "user_left", {
+      socketId: socket.id,
+      username: user.username,
+      roomId,
+      memberCount,
+    });
+
+    // Broadcast leave system message
+    await publishSocketEvent(roomId, "system_message", {
+      text: `غادر ${user.username} الغرفة`,
+      roomId
+    });
+
+    // Broadcast live counter update globally
+    await publishGlobalEvent("room_count_update", { roomId, memberCount });
+  });
+
   socket.on("disconnect", async () => {
     const roomId = socket.data.user.roomId;
     if (roomId) {
@@ -185,6 +252,12 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         username: user.username,
         roomId,
         memberCount: Math.max(0, memberCount),
+      });
+
+      // Broadcast leave system message on disconnect
+      await publishSocketEvent(roomId, "system_message", {
+        text: `غادر ${user.username} الغرفة (انقطع الاتصال)`,
+        roomId
       });
     }
   });

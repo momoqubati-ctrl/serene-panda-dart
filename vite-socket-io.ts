@@ -160,10 +160,35 @@ export function viteSocketIO(): Plugin {
           if (!roomId) { callback?.({ success: false, message: "معرف الغرفة مطلوب" }); return; }
 
           const prev = connectedUsers.get(socket.id)?.roomId;
+
+          // Resolve room names for system messages
+          let roomName = roomId;
+          let prevRoomName = prev || "";
+          try {
+            const rooms = await chatStore.listRooms();
+            const currentRoom = rooms.find((r: any) => r.id === roomId);
+            if (currentRoom) roomName = currentRoom.name;
+            if (prev) {
+              const oldRoom = rooms.find((r: any) => r.id === prev);
+              if (oldRoom) prevRoomName = oldRoom.name;
+            }
+          } catch (e) {
+            console.error("Error listing rooms for join_room name resolver:", e);
+          }
+
           if (prev && prev !== roomId) {
             socket.leave(`room:${prev}`);
             leaveUserFromRoom(socket.id);
             io!.to(`room:${prev}`).emit("user_left", { socketId: socket.id, username, roomId: prev, memberCount: getRoomCount(prev) });
+            
+            // Broadcast transition message to previous room
+            io!.to(`room:${prev}`).emit("system_message", {
+              text: `انتقل ${username} إلى الغرفة: ${roomName}`,
+              roomId: prev
+            });
+            
+            // Broadcast live counter update globally for the previous room
+            io!.emit("room_count_update", { roomId: prev, memberCount: getRoomCount(prev) });
           }
 
           socket.join(`room:${roomId}`);
@@ -190,6 +215,22 @@ export function viteSocketIO(): Plugin {
               memberCount: members.length,
             });
 
+            // Broadcast live counter update globally for the new room
+            io!.emit("room_count_update", { roomId, memberCount: members.length });
+
+            // Broadcast entrance/transition message to new room
+            if (prev && prev !== roomId) {
+              io!.to(`room:${roomId}`).emit("system_message", {
+                text: `دخل ${username} الغرفة (انتقل من: ${prevRoomName})`,
+                roomId
+              });
+            } else {
+              io!.to(`room:${roomId}`).emit("system_message", {
+                text: `دخل ${username} الغرفة`,
+                roomId
+              });
+            }
+
             if (room) {
               socket.emit("system_message", { type: "welcome", text: `مرحباً بك في ${room.name}`, roomId });
             }
@@ -205,6 +246,15 @@ export function viteSocketIO(): Plugin {
           socket.leave(`room:${roomId}`);
           leaveUserFromRoom(socket.id);
           io!.to(`room:${roomId}`).emit("user_left", { socketId: socket.id, username, roomId, memberCount: getRoomCount(roomId) });
+          
+          // Broadcast leave system message
+          io!.to(`room:${roomId}`).emit("system_message", {
+            text: `غادر ${username} الغرفة`,
+            roomId
+          });
+
+          // Broadcast live counter update globally
+          io!.emit("room_count_update", { roomId, memberCount: getRoomCount(roomId) });
         });
 
         socket.on("room_message", async (data: any, callback?: any) => {
@@ -399,6 +449,15 @@ export function viteSocketIO(): Plugin {
           const user = connectedUsers.get(socket.id);
           if (user?.roomId) {
             io!.to(`room:${user.roomId}`).emit("user_left", { socketId: socket.id, username, roomId: user.roomId, memberCount: Math.max(0, getRoomCount(user.roomId) - 1) });
+            
+            // Broadcast leave system message (disconnect)
+            io!.to(`room:${user.roomId}`).emit("system_message", {
+              text: `غادر ${username} الغرفة (انقطع الاتصال)`,
+              roomId: user.roomId
+            });
+
+            // Broadcast live counter update globally
+            io!.emit("room_count_update", { roomId: user.roomId, memberCount: Math.max(0, getRoomCount(user.roomId) - 1) });
           }
           for (const [key, timer] of typingTimers) {
             if (key.startsWith(`${socket.id}:`)) { clearTimeout(timer); typingTimers.delete(key); }

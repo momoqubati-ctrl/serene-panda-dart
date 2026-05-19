@@ -8,7 +8,9 @@ import {
   removeConnectedUser,
   getAllOnlineUsers,
   getTotalOnlineCount,
+  getRoomMemberCount,
 } from "./presenceManager";
+import { publishGlobalEvent } from "./SocketBroker";
 
 export function registerPresenceHandlers(io: Server, socket: Socket): void {
   const user = socket.data.user;
@@ -93,9 +95,14 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
    */
   socket.on("disconnect", async () => {
     try {
-      await removeConnectedUser(socket.id);
+      const removedUser = await removeConnectedUser(socket.id);
       const count = await getTotalOnlineCount();
       io.emit("online_count", { count });
+
+      if (removedUser && removedUser.roomId) {
+        const memberCount = await getRoomMemberCount(removedUser.roomId);
+        await publishGlobalEvent("room_count_update", { roomId: removedUser.roomId, memberCount });
+      }
     } catch (err) {
       console.error("Failed to remove connected user on disconnect:", err);
     }

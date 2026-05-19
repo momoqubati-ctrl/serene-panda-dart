@@ -31,7 +31,13 @@ export function initializeSocketBroker(io: Server): void {
 
       const { event, payload, excludeSocketId } = JSON.parse(dataStr);
 
-      let target = io.to(`room:${roomId}`);
+      let target: any;
+      if (roomId === "__global__") {
+        target = io;
+      } else {
+        target = io.to(`room:${roomId}`);
+      }
+
       if (excludeSocketId) {
         target = target.except(excludeSocketId) as any;
       }
@@ -62,5 +68,20 @@ export async function publishSocketEvent(roomId: string, event: string, payload:
 
   const channel = `pubsub:room:${roomId}`;
   const data = JSON.stringify({ event, payload, excludeSocketId });
+  await redisModule.redis.publish(channel, data);
+}
+
+export async function publishGlobalEvent(event: string, payload: any): Promise<void> {
+  const redisModule = await import("../services/redis");
+  
+  if (!redisModule.isRedisEnabled) {
+    if (localIo) {
+      localIo.emit(event, payload);
+    }
+    return;
+  }
+
+  const channel = `pubsub:room:__global__`;
+  const data = JSON.stringify({ event, payload });
   await redisModule.redis.publish(channel, data);
 }

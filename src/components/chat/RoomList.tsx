@@ -52,8 +52,20 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
 
     loadRooms();
 
-    // تحديث أعداد الأعضاء من Socket.io كل 5 ثوانٍ
+    // تحديث أعداد الأعضاء من Socket.io بشكل لحظي عبر الأحداث وكاحتياط كل 5 ثوانٍ
     const socket = getSocket();
+
+    const handleRoomCountUpdate = (data: { roomId: string; memberCount: number }) => {
+      if (ignore) return;
+      setRooms((prev) =>
+        prev.map((room) =>
+          room.id === data.roomId ? { ...room, members: data.memberCount } : room
+        )
+      );
+    };
+
+    socket.on("room_count_update", handleRoomCountUpdate);
+
     const refreshCounts = () => {
       socket.emit("get_rooms", (res: any) => {
         if (res?.success && !ignore) {
@@ -72,6 +84,7 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
     return () => {
       ignore = true;
       clearInterval(interval);
+      socket.off("room_count_update", handleRoomCountUpdate);
     };
   }, []);
 
