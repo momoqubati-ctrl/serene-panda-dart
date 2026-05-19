@@ -14,6 +14,7 @@
     "legacy:rebuild-schema": "node scripts/legacy-rebuild-from-dump.cjs",
     "legacy:normalize-performance": "node scripts/legacy-normalize-performance.cjs",
     "legacy:create-admin": "node scripts/create-safarihost-admin.cjs",
+    "db:migrate": "node scripts/apply-distributed-schema.cjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
