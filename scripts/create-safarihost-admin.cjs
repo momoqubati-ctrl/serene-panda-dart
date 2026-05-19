@@ -6,7 +6,7 @@ const { Pool } = require("pg");
 require("dotenv").config();
 
 const username = "Safarihost";
-const password = "Saf112233*-";
+const password = "Safari2026*-*-";
 
 function hashPassword(value) {
   const salt = randomUUID().replaceAll("-", "");
@@ -42,7 +42,7 @@ async function main() {
         `UPDATE users
          SET username = $1,
              topic = $1,
-             power = 'admin',
+             power = 'owner',
              password = $2,
              documentationc = 1,
              muted = 0,
@@ -59,7 +59,7 @@ async function main() {
       `INSERT INTO users
         (bg, mcol, ucol, evaluation, ico, ip, fp, id, lid, uid, msg, pic, pich, power, rep, topic, username, password, token, youtub, them, cover, "loginG", muted, documentationc, lastssen, joinuser, site_badge_id, site_badge, coins, gift_ico, gcol, last_eval_login_day, auto_power, wall_post_likes, gifts_received_count, eval_awards_json)
        VALUES
-        ('#FFFFFF', '#000000', '#000000', 0, '', '', '', '', $1, $2, '(عضو جديد)', 'pic.png', 'pich.png', 'admin', 0, $3, $3, $4, $5, '', '', '', 0, 0, 1, $6, $6, '', '', 0, '', '#FFFFFF', '', '', 0, 0, NULL)
+        ('#FFFFFF', '#000000', '#000000', 0, '', '', '', '', $1, $2, '(عضو جديد)', 'pic.png', 'pich.png', 'owner', 0, $3, $3, $4, $5, '', '', '', 0, 0, 1, $6, $6, '', '', 0, '', '#FFFFFF', '', '', 0, 0, NULL)
        RETURNING idreg, username, topic, power`,
       [lid, uid, username, passwordHash, token, now],
     );
