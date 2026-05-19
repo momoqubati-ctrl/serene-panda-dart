@@ -6,6 +6,7 @@ import {
   listAdminTables,
   listTableRows,
   tableExists,
+  getPrimaryKeyColumn,
 } from "../../../services/legacyAdminService";
 import { getAdminContext } from "../../../services/adminAccess";
 
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event) => {
     const tables = await listAdminTables();
 
     if (!tableName) {
-      return { success: true, tables, selectedTable: null, columns: [], rows: [], totalRows: 0 };
+      return { success: true, tables, selectedTable: null, columns: [], rows: [], totalRows: 0, primaryKey: "id" };
     }
 
     if (!(await tableExists(tableName))) {
@@ -33,10 +34,11 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: "الجدول غير موجود" };
     }
 
-    const [columns, rows, totalRows] = await Promise.all([
+    const [columns, rows, totalRows, pkColumn] = await Promise.all([
       listAdminColumns(tableName),
       listTableRows(tableName, limit, offset),
       countTableRows(tableName),
+      getPrimaryKeyColumn(tableName),
     ]);
 
     return {
@@ -46,6 +48,7 @@ export default defineEventHandler(async (event) => {
       columns,
       rows,
       totalRows,
+      primaryKey: pkColumn,
       limit: Math.min(Math.max(limit || 50, 1), 100),
       offset: Math.max(offset || 0, 0),
     };
@@ -55,3 +58,4 @@ export default defineEventHandler(async (event) => {
     return { success: false, message: "تعذر قراءة بيانات القاعدة" };
   }
 });
+

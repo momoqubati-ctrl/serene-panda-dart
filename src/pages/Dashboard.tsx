@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users, MessageSquare, Home, LayoutGrid, Settings, Bell, Bot, 
   Image as LucideImage, X, ShieldCheck, Menu, Search, Activity, Zap
@@ -15,6 +15,8 @@ import SettingsPanel from "@/components/chat/SettingsPanel";
 import PresenceEngine from "@/components/realtime/PresenceEngine";
 import ActivityFeed from "@/components/realtime/ActivityFeed";
 import RoomPage from "@/components/chat/RoomPage";
+import AdminCP from "@/components/admin/AdminCP";
+import AdminDashboard from "@/components/admin/AdminDashboard";
 
 const TABS = [
   { id: "members", icon: Users, label: "المتواجدون" },
@@ -28,6 +30,38 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("members");
   const [activeRoom, setActiveRoom] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [adminSection, setAdminSection] = useState("overview");
+
+  // User Permissions
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+        const res = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.permissions) {
+            setIsAdmin(data.permissions.includes("cp"));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching permissions:", err);
+      }
+    };
+    fetchPermissions();
+  }, []);
+
+  const activeTabs = [
+    ...TABS,
+    ...(isAdmin ? [{ id: "cpanel", icon: ShieldCheck, label: "لوحة التحكم" }] : []),
+  ];
 
   const renderSidebarContent = () => {
     switch (activeTab) {
@@ -36,6 +70,7 @@ const Dashboard = () => {
       case "rooms": return <RoomList onSelectRoom={(room: any) => { setActiveRoom(room); setSidebarOpen(false); }} />;
       case "wall": return <WallFeed />;
       case "settings": return <SettingsPanel />;
+      case "cpanel": return <AdminCP activeSection={adminSection} onChangeSection={(sec) => { setAdminSection(sec); setSidebarOpen(false); }} />;
       default: return <MemberList />;
     }
   };
@@ -55,7 +90,7 @@ const Dashboard = () => {
           <div className="flex flex-col h-full bg-white dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
               <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                {TABS.find(t => t.id === activeTab)?.label}
+                {activeTabs.find(t => t.id === activeTab)?.label}
               </h2>
               <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black">REALTIME</Badge>
             </div>
@@ -94,15 +129,15 @@ const Dashboard = () => {
         <div className="z-10 hidden w-80 flex-col border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 lg:flex">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              {TABS.find(t => t.id === activeTab)?.label}
+              {activeTabs.find(t => t.id === activeTab)?.label}
             </h2>
             <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black">REALTIME</Badge>
           </div>
 
           <div className="flex-1 overflow-hidden">{renderSidebarContent()}</div>
 
-          <div className="grid grid-cols-5 gap-1 border-t border-slate-100 dark:border-slate-800 p-2 bg-slate-50/50 dark:bg-slate-900/50">
-            {TABS.map((tab) => {
+          <div className={`grid ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'} gap-1 border-t border-slate-100 dark:border-slate-800 p-2 bg-slate-50/50 dark:bg-slate-900/50`}>
+            {activeTabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
               return (
@@ -122,7 +157,9 @@ const Dashboard = () => {
 
         {/* Main Content Area */}
         <div className="relative flex flex-1 flex-col overflow-hidden">
-          {activeRoom ? (
+          {activeTab === "cpanel" ? (
+            <AdminDashboard section={adminSection} />
+          ) : activeRoom ? (
             <RoomPage room={activeRoom} onBack={() => setActiveRoom(null)} isEmbedded />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px]">
@@ -163,7 +200,7 @@ const Dashboard = () => {
 
       {/* Mobile Nav */}
       <nav className="z-30 flex h-20 items-center justify-around border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pb-4 lg:hidden">
-        {TABS.map((tab) => {
+        {activeTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
           return (

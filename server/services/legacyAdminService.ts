@@ -71,3 +71,56 @@ export const countTableRows = async (tableName: string) => {
   const result = await dbPool.query<{ count: string }>(`SELECT count(*)::text AS count FROM "${tableName}"`);
   return Number(result.rows[0]?.count || 0);
 };
+
+export const getPrimaryKeyColumn = async (tableName: string): Promise<string> => {
+  try {
+    const result = await dbPool.query<{ name: string }>(
+      `SELECT a.attname AS name
+       FROM pg_index i
+       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+       WHERE i.indrelid = $1::regclass AND i.indisprimary`,
+      [tableName]
+    );
+    return result.rows[0]?.name || "id";
+  } catch {
+    return "id";
+  }
+};
+
+const isSafeIdentifier = (val: string) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val);
+
+export const insertTableRow = async (tableName: string, data: Record<string, any>) => {
+  const keys = Object.keys(data).filter(isSafeIdentifier);
+  if (keys.length === 0) throw new Error("No safe fields to insert");
+  
+  const values = keys.map(k => data[k]);
+  const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
+  const columns = keys.map(k => `"${k}"`).join(", ");
+  
+  const query = `INSERT INTO "${tableName}" (${columns}) VALUES (${placeholders}) RETURNING *`;
+  const result = await dbPool.query(query, values);
+  return result.rows[0];
+};
+
+export const updateTableRow = async (tableName: string, pkColumn: string, pkValue: any, data: Record<string, any>) => {
+  const keys = Object.keys(data).filter(isSafeIdentifier);
+  if (keys.length === 0) throw new Error("No safe fields to update");
+  if (!isSafeIdentifier(pkColumn)) throw new Error("Invalid primary key column");
+
+  const values = keys.map(k => data[k]);
+  const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(", ");
+  values.push(pkValue);
+  const pkPlaceholder = `$${values.length}`;
+  
+  const query = `UPDATE "${tableName}" SET ${setClause} WHERE "${pkColumn}" = ${pkPlaceholder} RETURNING *`;
+  const result = await dbPool.query(query, values);
+  return result.rows[0];
+};
+
+export const deleteTableRow = async (tableName: string, pkColumn: string, pkValue: any) => {
+  if (!isSafeIdentifier(pkColumn)) throw new Error("Invalid primary key column");
+  const query = `DELETE FROM "${tableName}" WHERE "${pkColumn}" = $1`;
+  await dbPool.query(query, [pkValue]);
+  return true;
+};
+

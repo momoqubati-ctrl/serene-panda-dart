@@ -103,11 +103,51 @@ export const LEGACY_CP_SECTIONS: Record<string, {
   giftsgit: {
     title: "متجر الهدايا",
     description: "إدارة أيقونات وأسعار الهدايا المتاحة للإرسال.",
-    tables: ["gifts", "gift_categories"],
+    tables: ["gifts", "gift_categories", "gift_notifications"],
   },
   agentwallets: {
     title: "نظام الوكلاء",
     description: "إدارة حسابات الشحن والتحويلات المالية للوكلاء.",
-    tables: ["agents", "coin_packages", "topup_orders"],
+    tables: ["agents", "coin_packages", "topup_orders", "topup_order_events", "topup_settlement_ledger", "agent_wallets", "agent_wallet_ledger", "agent_payment_methods"],
+  },
+  subs: {
+    title: "إدارة الاشتراكات والترقيات",
+    description: "التحكم في اشتراكات الأعضاء وترقياتهم وتحديد الرتب.",
+    tables: ["sub", "user_role_assignments"],
+  },
+  evaluationpoints: {
+    title: "احتساب النقاط والعملات",
+    description: "سجلات شحن واحتساب العملات للمستخدمين ودفتر الحسابات.",
+    tables: ["coin_ledger", "site_master_wallet_ledger", "owner_agent_transfers"],
+  },
+  micprovidercp: {
+    title: "تحديد مزود المايكات",
+    description: "التحكم في إعدادات مزودي خدمة الصوت والبث.",
+    tables: ["site_settings", "settings"],
+  },
+  ddosguardcp: {
+    title: "حماية DDoS والـ VPN",
+    description: "إعدادات حماية الشبكة وحظر الـ VPN والبروكسي.",
+    tables: ["site_settings", "bsb"],
+  },
+  hostcleanup: {
+    title: "صيانة الإضافات",
+    description: "تنظيف وصيانة الإضافات النشطة في النظام.",
+    tables: ["hosts"],
+  },
+  hostcontrols: {
+    title: "مفاتيح الإضافات",
+    description: "إدارة تراخيص ومفاتيح تشغيل الميزات الإضافية.",
+    tables: ["hosts"],
+  },
+  hostsettings: {
+    title: "إعدادات الإضافات",
+    description: "روابط وإعدادات الإضافات النشطة.",
+    tables: ["hosts"],
+  },
+  hostdomains: {
+    title: "نطاقات وبيانات الإضافات",
+    description: "نطاقات وبيانات الإضافات والمسارات.",
+    tables: ["hosts"],
   },
 };
