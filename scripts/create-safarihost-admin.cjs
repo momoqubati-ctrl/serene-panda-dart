@@ -68,19 +68,44 @@ async function main() {
     }
 
     // Assign 'ispower' role (Owner / General Manager)
-    const roleRes = await client.query("SELECT id FROM roles WHERE legacy_name = 'ispower' OR name = 'ispower' LIMIT 1");
-    if (roleRes.rowCount > 0) {
-      const roleId = roleRes.rows[0].id;
-      await client.query(
-        `INSERT INTO user_role_assignments (user_idreg, role_id, power_name)
-         VALUES ($1, $2, 'ispower')
-         ON CONFLICT (user_idreg, role_id) DO NOTHING`,
-        [idreg, roleId]
+    let roleRes = await client.query("SELECT id FROM roles WHERE legacy_name = 'ispower' OR name = 'ispower' LIMIT 1");
+    let roleId;
+
+    if (roleRes.rowCount === 0) {
+      console.log("Role 'ispower' not found. Creating it with default owner permissions...");
+      const newRole = await client.query(
+        `INSERT INTO roles (legacy_name, name, rank, icon_url, auto_enabled, auto_promote, auto_points)
+         VALUES ('ispower', 'ispower', 100000, '', 0, 0, 0)
+         RETURNING id`
       );
-      console.log(`Assigned user idreg ${idreg} to role 'ispower' (role_id ${roleId})`);
+      roleId = newRole.rows[0].id;
+
+      const defaultPermissions = [
+        'cp', 'ban', 'msgs', 'shrt', 'subs', 'alert', 'delbc', 'flter', 'loveu',
+        'meiut', 'owner', 'ulike', 'unick', 'delmsg', 'delpic', 'grupes', 'mynick',
+        'forcepm', 'history', 'stealth', 'bootedit', 'edituser', 'setpower', 'roomowner', 'createroom'
+      ];
+
+      for (const perm of defaultPermissions) {
+        await client.query(
+          `INSERT INTO role_permissions (role_id, permission_key, permission_value)
+           VALUES ($1, $2, 'true'::jsonb)
+           ON CONFLICT (role_id, permission_key) DO NOTHING`,
+          [roleId, perm]
+        );
+      }
+      console.log(`Created role 'ispower' (role_id ${roleId}) with ${defaultPermissions.length} permissions.`);
     } else {
-      console.warn("Role 'ispower' not found in roles table. Cannot assign permissions.");
+      roleId = roleRes.rows[0].id;
     }
+
+    await client.query(
+      `INSERT INTO user_role_assignments (user_idreg, role_id, power_name)
+       VALUES ($1, $2, 'ispower')
+       ON CONFLICT (user_idreg, role_id) DO NOTHING`,
+      [idreg, roleId]
+    );
+    console.log(`Assigned user idreg ${idreg} to role 'ispower' (role_id ${roleId})`);
   } finally {
     client.release();
     await pool.end();
