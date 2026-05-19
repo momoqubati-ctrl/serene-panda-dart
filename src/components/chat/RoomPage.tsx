@@ -148,7 +148,7 @@ const ChatInputArea = React.memo(({ roomId, onSendMessage }: { roomId: string, o
   };
 
   return (
-    <div className="z-10 border-t border-border bg-card p-3 shadow-lg">
+    <div className="z-10 border-t border-border bg-card p-3 shadow-lg [direction:ltr]" dir="ltr">
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
         <div className="flex gap-1">
           <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-primary">
@@ -164,7 +164,7 @@ const ChatInputArea = React.memo(({ roomId, onSendMessage }: { roomId: string, o
             className="h-10 rounded-xl border-border bg-muted text-xs font-bold text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary"
             value={message}
             onChange={handleInputChange}
-            dir="rtl"
+            dir="ltr"
             maxLength={1000}
           />
         </div>
@@ -402,7 +402,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
   }, [roomId, mergeMessages]);
 
   return (
-    <div className={`relative flex h-full flex-col bg-card ltr ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
+    <div dir="ltr" className={`relative flex h-full flex-col bg-card [direction:ltr] ${!isEmbedded ? "fixed inset-0 z-[60]" : ""}`}>
       <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between border-b border-border bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-2 shadow-sm">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
@@ -417,7 +417,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
             </Avatar>
             <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
           </div>
-          <div dir="rtl">
+          <div dir="ltr">
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-black leading-tight text-foreground">{room.name}</h3>
               <Crown size={12} className="text-yellow-500" />
@@ -469,7 +469,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
         </div>
       )}
 
-      <div ref={scrollRef} className={`flex-1 space-y-3 overflow-y-auto bg-muted/50 p-3 ${showMics ? "pt-[120px]" : "pt-[64px]"}`}>
+      <div ref={scrollRef} dir="ltr" className={`flex-1 space-y-3 overflow-y-auto bg-muted/50 p-3 [direction:ltr] ${showMics ? "pt-[120px]" : "pt-[64px]"}`}>
         {isLoading && (
           <div className="flex h-24 items-center justify-center text-muted-foreground">
             <Loader2 className="animate-spin" size={20} />
@@ -477,13 +477,13 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
         )}
 
         {!isLoading && error && (
-          <div className="rounded-lg border border-red-100 bg-red-50 p-2 text-center text-xs font-bold text-red-600" dir="rtl">
+          <div className="rounded-lg border border-red-100 bg-red-50 p-2 text-center text-xs font-bold text-red-600 [direction:ltr]" dir="ltr">
             {error}
           </div>
         )}
 
         {!isLoading && messages.length === 0 && (
-          <div className="rounded-lg border border-border bg-card p-3 text-center text-xs font-bold text-muted-foreground" dir="rtl">
+          <div className="rounded-lg border border-border bg-card p-3 text-center text-xs font-bold text-muted-foreground [direction:ltr]" dir="ltr">
             لا توجد رسائل بعد
           </div>
         )}
@@ -501,7 +501,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
                 </Avatar>
               </div>
             </div>
-            <div className="min-w-0 flex-1" dir="rtl">
+            <div className="min-w-0 flex-1" dir="ltr">
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <h4 className={`text-[11px] font-black ${msg.color}`}>{msg.user}</h4>
                 <img src={getCountryFlagSrc(msg.countryCode)} alt={msg.countryCode} className="h-3 w-4 rounded-sm object-cover" />
@@ -511,7 +511,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
                   {msg.pending ? "جار الإرسال" : msg.failed ? "فشل" : formatMessageTime(msg.createdAt)}
                 </span>
               </div>
-              <div className={`relative inline-block max-w-[90%] rounded-2xl rounded-tr-none border p-2.5 shadow-sm ${getMessageBubbleClass(msg)}`}>
+              <div className={`relative inline-block max-w-[90%] rounded-2xl rounded-tl-none border p-2.5 shadow-sm ${getMessageBubbleClass(msg)}`}>
                 <p className="break-words text-xs font-bold leading-relaxed">{msg.text}</p>
                 {msg.isSystem && msg.systemType === "transition" && msg.targetRoom && (
                   <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200/50 bg-white/40 dark:border-slate-700/50 dark:bg-slate-900/40 p-3 shadow-md backdrop-blur-md transition-all duration-300 hover:shadow-lg hover:bg-white/60 dark:hover:bg-slate-900/60 flex items-center justify-between gap-4 max-w-[280px]">
@@ -520,7 +520,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
                         <AvatarImage src={msg.targetRoom.image} />
                         <AvatarFallback>{msg.targetRoom.name?.[0] || "غ"}</AvatarFallback>
                       </Avatar>
-                      <div className="text-right min-w-0">
+                      <div className="text-left min-w-0">
                         <h5 className="text-[11px] font-black text-slate-800 dark:text-white truncate leading-tight">{msg.targetRoom.name}</h5>
                         <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500">غرفة محادثة نشطة</span>
                       </div>
@@ -547,7 +547,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
 
         {/* مؤشر الكتابة */}
         {typingUsers.length > 0 && (
-          <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground" dir="rtl">
+          <div className="flex items-center gap-2 px-2 text-[10px] font-bold text-muted-foreground" dir="ltr">
             <div className="flex gap-0.5">
               <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "0ms" }} />
               <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: "150ms" }} />
