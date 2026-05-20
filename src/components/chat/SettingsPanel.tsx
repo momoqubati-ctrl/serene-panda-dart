@@ -1,11 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
+import { getSocket } from "@/lib/socket";
 import { 
   User, 
   Palette, 
@@ -18,12 +19,29 @@ import {
   Eye,
   Smartphone,
   Moon,
-  Sun
+  Sun,
+  Circle
 } from 'lucide-react';
+
+type PresenceStatus = "online" | "busy" | "away";
+
+const MANUAL_STATUSES: { id: PresenceStatus; label: string; color: string; dotColor: string; description: string }[] = [
+  { id: "online", label: "تلقائي", color: "bg-green-500/10 text-green-600 border-green-500/30", dotColor: "bg-green-500", description: "الحالة التلقائية حسب نشاطك" },
+  { id: "busy",   label: "مشغول", color: "bg-orange-500/10 text-orange-600 border-orange-500/30", dotColor: "bg-orange-500", description: "يظهر للجميع أنك مشغول" },
+  { id: "away",   label: "غير متواجد", color: "bg-purple-500/10 text-purple-600 border-purple-500/30", dotColor: "bg-purple-500", description: "يظهر للجميع أنك غير متواجد" },
+];
 
 const SettingsPanel = () => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+
+  // Load current manual status from sessionStorage
+  const [activeStatus, setActiveStatus] = useState<PresenceStatus>(() => {
+    const stored = sessionStorage.getItem("manualStatus");
+    if (stored === "busy" || stored === "away") return stored;
+    return "online";
+  });
+
   const currentUser = React.useMemo(() => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -48,7 +66,24 @@ const SettingsPanel = () => {
     }
   }, []);
 
+  const handleStatusChange = (status: PresenceStatus) => {
+    setActiveStatus(status);
+    const socket = getSocket();
+
+    if (status === "online") {
+      // Clear manual status → revert to automatic idle detection
+      sessionStorage.removeItem("manualStatus");
+      socket.emit("status_update", { status: "online" });
+    } else {
+      // Set manual status (busy or away) → persists for the session
+      sessionStorage.setItem("manualStatus", status);
+      socket.emit("status_update", { status });
+    }
+  };
+
   const handleLogout = () => {
+    // Clear manual status on logout so next login starts as "online"
+    sessionStorage.removeItem("manualStatus");
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
     navigate("/", { replace: true });
@@ -63,10 +98,16 @@ const SettingsPanel = () => {
           style={currentUser?.banner ? { backgroundImage: `linear-gradient(90deg, rgba(37,99,235,.82), rgba(29,78,216,.82)), url(${currentUser.banner})` } : undefined}
         >
           <div className="flex items-center gap-4">
-            <Avatar className="w-20 h-20 border-4 border-white/20">
-              <AvatarImage src={currentUser?.avatar || "/pic.png"} />
-              <AvatarFallback>{currentUser?.name?.[0] || "ز"}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-20 h-20 border-4 border-white/20">
+                <AvatarImage src={currentUser?.avatar || "/pic.png"} />
+                <AvatarFallback>{currentUser?.name?.[0] || "ز"}</AvatarFallback>
+              </Avatar>
+              {/* Status dot on avatar */}
+              <span className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-white/40 ${
+                activeStatus === "busy" ? "bg-orange-500" : activeStatus === "away" ? "bg-purple-500" : "bg-green-500"
+              } transition-colors duration-300`} />
+            </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold">{currentUser?.name || "زائر"}</h3>
               <p className="text-white/80 text-sm">{currentUser?.profileMsg || "( غير مسجل )"} • {currentUser?.evaluation || 0} نقطة</p>
@@ -84,6 +125,47 @@ const SettingsPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* ===== Presence Status Selector ===== */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-muted-foreground px-2 uppercase tracking-wider">حالة الاتصال</h4>
+        <div className="grid grid-cols-3 gap-2">
+          {MANUAL_STATUSES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => handleStatusChange(s.id)}
+              className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all duration-200 ${
+                activeStatus === s.id
+                  ? `${s.color} border-current shadow-sm scale-[1.02]`
+                  : "bg-card dark:bg-card/5 border-transparent hover:bg-muted dark:hover:bg-card/10 text-muted-foreground"
+              }`}
+            >
+              <span className={`w-4 h-4 rounded-full ${s.dotColor} ${
+                activeStatus === s.id ? "ring-2 ring-offset-1 ring-offset-background" : ""
+              } transition-all duration-200`}
+                style={activeStatus === s.id ? { ringColor: s.dotColor } : undefined}
+              />
+              <span className="text-xs font-bold">{s.label}</span>
+              {activeStatus === s.id && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-current rounded-full flex items-center justify-center">
+                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none" className="text-white">
+                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground px-2 text-center font-medium" style={{ direction: 'rtl' }}>
+          {activeStatus === "online" 
+            ? "الحالة تلقائية: أخضر عند النشاط، أصفر بعد دقيقتين من عدم التفاعل"
+            : activeStatus === "busy" 
+              ? "حالتك: مشغول — ستبقى حتى تغيّرها أو تسجل الخروج"
+              : "حالتك: غير متواجد — ستبقى حتى تغيّرها أو تسجل الخروج"
+          }
+        </p>
+      </div>
 
       {/* Theme Toggle */}
       <div className="space-y-3">

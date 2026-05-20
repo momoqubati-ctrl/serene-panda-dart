@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, X, Wifi, WifiOff } from 'lucide-react';
@@ -24,6 +24,22 @@ type OnlineMember = {
   avatarFrameUrl?: string;
   giftIconUrl?: string;
   roomId?: string;
+  status?: string;
+};
+
+// ===== Status Utilities =====
+type PresenceStatus = "online" | "idle" | "busy" | "away";
+
+const STATUS_CONFIG: Record<PresenceStatus, { color: string; pulseColor: string; label: string }> = {
+  online: { color: "bg-green-500", pulseColor: "bg-green-400", label: "متصل" },
+  idle:   { color: "bg-amber-400", pulseColor: "bg-amber-300", label: "بعيد مؤقتاً" },
+  busy:   { color: "bg-orange-500", pulseColor: "bg-orange-400", label: "مشغول" },
+  away:   { color: "bg-purple-500", pulseColor: "bg-purple-400", label: "غير متواجد" },
+};
+
+const getStatusConfig = (status?: string) => {
+  if (status && status in STATUS_CONFIG) return STATUS_CONFIG[status as PresenceStatus];
+  return STATUS_CONFIG.online;
 };
 
 const getMemberIdentity = (member: { id?: string; username?: string; name?: string; role?: string }) => {
@@ -58,7 +74,7 @@ const getCurrentMember = () => {
       rank: role === "admin" ? 100 : 0,
       color: role === "admin" ? "text-red-600" : "text-foreground",
       bg: "bg-blue-50",
-      status: "online",
+      status: "online" as string,
       room: "الغرفة العامة",
       country: normalizeCountryCode(user.countryCode),
       points: Number(user.evaluation) || 0,
@@ -95,22 +111,91 @@ const getCurrentMember = () => {
   }
 };
 
+const IDLE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+
 const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) => {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<OnlineMember[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
+  const [myStatus, setMyStatus] = useState<PresenceStatus>("online");
+  const [userStatuses, setUserStatuses] = useState<Map<string, string>>(new Map());
+  const [userCountries, setUserCountries] = useState<Map<string, string>>(new Map());
+
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualStatusRef = useRef<string | null>(null);
 
   const currentMember = useMemo(() => getCurrentMember(), []);
 
-  // ربط WebSocket لجلب المتصلين
+  // ===== Idle Detection for Current User =====
+  useEffect(() => {
+    // Load manual status from sessionStorage (persists only for the session)
+    const storedManual = sessionStorage.getItem("manualStatus");
+    if (storedManual === "busy" || storedManual === "away") {
+      manualStatusRef.current = storedManual;
+      setMyStatus(storedManual as PresenceStatus);
+      // Emit to server
+      const socket = getSocket();
+      socket.emit("status_update", { status: storedManual });
+      return; // Don't set up idle detection when manual status is active
+    }
+
+    const resetIdleTimer = () => {
+      // If manual status is set, don't auto-change
+      if (manualStatusRef.current) return;
+
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+
+      // Set to online on activity
+      setMyStatus((prev) => {
+        if (prev !== "online" && !manualStatusRef.current) {
+          const socket = getSocket();
+          socket.emit("status_update", { status: "online" });
+          return "online";
+        }
+        return prev;
+      });
+
+      // Set idle after 2 minutes
+      idleTimerRef.current = setTimeout(() => {
+        if (manualStatusRef.current) return;
+        setMyStatus("idle");
+        const socket = getSocket();
+        socket.emit("status_update", { status: "idle" });
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const activityEvents = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    activityEvents.forEach((ev) => window.addEventListener(ev, resetIdleTimer));
+
+    // Start initial timer
+    resetIdleTimer();
+
+    return () => {
+      activityEvents.forEach((ev) => window.removeEventListener(ev, resetIdleTimer));
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  // ===== WebSocket Online Users =====
   const fetchOnlineUsers = useCallback(() => {
     const socket = getSocket();
     socket.emit("get_online_users", (res: any) => {
       if (res?.success) {
         setOnlineUsers(res.users || []);
         setOnlineCount(res.count || 0);
+        // Update statuses and countries from fetched data
+        const newStatuses = new Map<string, string>();
+        const newCountries = new Map<string, string>();
+        for (const u of res.users || []) {
+          if (u.id) {
+            newStatuses.set(u.id, u.status || "online");
+            newCountries.set(u.id, u.countryCode || "SA");
+          }
+        }
+        setUserStatuses(newStatuses);
+        setUserCountries(newCountries);
       }
     });
   }, []);
@@ -129,13 +214,33 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
     const onOnlineCount = (data: { count: number }) => {
       setOnlineCount(data.count);
-      // تحديث القائمة عند تغير العدد
       fetchOnlineUsers();
+    };
+
+    // Listen for real-time status updates from other users
+    const onUserStatusUpdate = (data: { userId: string; status: string }) => {
+      if (!data?.userId) return;
+      setUserStatuses((prev) => {
+        const next = new Map(prev);
+        next.set(data.userId, data.status);
+        return next;
+      });
+    };
+
+    const onUserCountryUpdate = (data: { userId: string; countryCode: string }) => {
+      if (!data?.userId) return;
+      setUserCountries((prev) => {
+        const next = new Map(prev);
+        next.set(data.userId, data.countryCode);
+        return next;
+      });
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("online_count", onOnlineCount);
+    socket.on("user_status_update", onUserStatusUpdate);
+    socket.on("user_country_update", onUserCountryUpdate);
 
     if (socket.connected) {
       onConnect();
@@ -150,18 +255,20 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("online_count", onOnlineCount);
+      socket.off("user_status_update", onUserStatusUpdate);
+      socket.off("user_country_update", onUserCountryUpdate);
       clearInterval(interval);
     };
   }, [fetchOnlineUsers]);
 
-  // تحويل المتصلين لعناصر العرض
+  // ===== Build members list =====
   const members = useMemo(() => {
     const membersList: any[] = [];
     const seen = new Set<string>();
 
     // المستخدم الحالي أولاً
     if (currentMember) {
-      membersList.push(currentMember);
+      membersList.push({ ...currentMember, status: myStatus });
       seen.add(getMemberIdentity(currentMember));
     }
 
@@ -171,6 +278,9 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       if (seen.has(identity)) continue;
       seen.add(identity);
 
+      const resolvedStatus = userStatuses.get(user.id) || user.status || "online";
+      const resolvedCountry = userCountries.get(user.id) || user.countryCode || "SA";
+
       membersList.push({
         id: user.id,
         name: user.username,
@@ -178,9 +288,9 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         rank: user.role === "admin" ? 100 : 0,
         color: user.role === "admin" ? "text-red-600" : "text-foreground",
         bg: "bg-muted",
-        status: "online",
+        status: resolvedStatus,
         room: user.roomId || "",
-        country: user.countryCode || "SA",
+        country: resolvedCountry,
         points: 0,
         rep: 0,
         avatar: user.avatar || "/pic.png",
@@ -192,7 +302,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     }
 
     return membersList;
-  }, [currentMember, onlineUsers]);
+  }, [currentMember, onlineUsers, myStatus, userStatuses]);
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -240,7 +350,9 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
       {/* Members List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {members.filter(m => m.name.includes(searchQuery)).map((member, index) => (
+        {members.filter(m => m.name.includes(searchQuery)).map((member, index) => {
+          const statusCfg = getStatusConfig(member.status);
+          return (
           <div 
             key={`${getMemberIdentity(member)}-${member.id || index}`} 
             onClick={() => setSelectedUser(member)}
@@ -256,7 +368,17 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
                   <AvatarFallback>{member.name[0]}</AvatarFallback>
                 </Avatar>
               </div>
-              <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-background ${member.status === 'online' ? 'bg-green-500' : 'bg-amber-500'}`}></span>
+              {/* Status Dot with pulse animation */}
+              <span
+                className="absolute bottom-0 right-0 flex items-center justify-center w-4 h-4"
+                title={statusCfg.label}
+                aria-label={statusCfg.label}
+              >
+                {member.status === "online" && (
+                  <span className={`absolute inline-flex h-full w-full rounded-full ${statusCfg.pulseColor} opacity-50 animate-ping`} />
+                )}
+                <span className={`relative inline-flex w-3.5 h-3.5 rounded-full border-2 border-background ${statusCfg.color} transition-colors duration-300`} />
+              </span>
             </div>
 
             <div className="flex-1 min-w-0 text-left">
@@ -270,6 +392,12 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
                   )}
                   {member.giftIconUrl && (
                     <img src={member.giftIconUrl} alt="gift" className="h-4 w-4 rounded object-cover" />
+                  )}
+                  {/* Status label badge */}
+                  {member.status && member.status !== "online" && (
+                    <Badge className={`h-3.5 text-[7px] px-1 border-none rounded-sm font-bold text-white ${statusCfg.color}`}>
+                      {statusCfg.label}
+                    </Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
@@ -286,7 +414,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
               </div>
             </div>
           </div>
-        ))}
+        );
+        })}
 
         {members.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

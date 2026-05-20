@@ -45,6 +45,7 @@ export function viteSocketIO(): Plugin {
         messageBubbleStyle: string;
         roomId: string;
         connectedAt: string;
+        status: "online" | "idle" | "busy" | "away";
       };
 
       const connectedUsers = new Map<string, OnlineUser>();
@@ -117,6 +118,8 @@ export function viteSocketIO(): Plugin {
       import("./server/services/powersService").then(m => { powersService = m; });
       let filterService: any;
       import("./server/services/filterService").then(m => { filterService = m; });
+      let requestCountry: any;
+      import("./server/services/requestCountry").then(m => { requestCountry = m; });
 
       // ========== Typing throttle ==========
       const typingTimers = new Map<string, NodeJS.Timeout>();
@@ -139,6 +142,7 @@ export function viteSocketIO(): Plugin {
           messageBubbleStyle: auth.messageBubbleStyle || "default",
           roomId: "",
           connectedAt: new Date().toISOString(),
+          status: "online",
         };
 
         addUser(socket.id, userData);
@@ -155,6 +159,24 @@ export function viteSocketIO(): Plugin {
           user: userData,
           serverTime: new Date().toISOString(),
         });
+
+        // Update country from IP asynchronously
+        if (requestCountry) {
+          const socketIp = requestCountry.getSocketIp(socket);
+          requestCountry.lookupCountryCodeByIp(socketIp).then((cc: string) => {
+            if (cc) {
+              const u = connectedUsers.get(socket.id);
+              if (u) {
+                u.countryCode = cc;
+                io!.emit("user_country_update", {
+                  socketId: socket.id,
+                  userId: u.id,
+                  countryCode: cc,
+                });
+              }
+            }
+          }).catch((err: any) => console.error("IP Lookup error:", err));
+        }
 
         // ===== Room Events =====
         socket.on("join_room", async (data: any, callback?: any) => {
@@ -494,8 +516,28 @@ export function viteSocketIO(): Plugin {
             id: u.id, username: u.username, role: u.role, avatar: u.avatar,
             countryCode: u.countryCode, avatarFrameUrl: u.avatarFrameUrl,
             giftIconUrl: u.giftIconUrl, roomId: u.roomId,
+            status: u.status || "online",
           }));
           callback?.({ success: true, users, count: users.length });
+        });
+
+        // ===== Status Update Events =====
+        socket.on("status_update", (data: any) => {
+          const newStatus = String(data?.status || "online").trim();
+          const validStatuses = ["online", "idle", "busy", "away"];
+          if (!validStatuses.includes(newStatus)) return;
+
+          const user = connectedUsers.get(socket.id);
+          if (!user) return;
+          user.status = newStatus as OnlineUser["status"];
+
+          // Broadcast the status change to ALL connected clients
+          io!.emit("user_status_update", {
+            socketId: socket.id,
+            userId: user.id,
+            username: user.username,
+            status: newStatus,
+          });
         });
 
         // ===== PM Events =====
