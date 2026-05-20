@@ -65,7 +65,7 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
       avatarFrameUrl: socket.handshake.auth?.avatarFrameUrl || "",
       giftIconUrl: socket.handshake.auth?.giftIconUrl || "",
       messageBubbleStyle: socket.handshake.auth?.messageBubbleStyle || "default",
-      status: socket.handshake.auth?.status || "active",
+      status: socket.handshake.auth?.status || "online",
       connectedAt: new Date().toISOString(),
     };
 
@@ -82,6 +82,18 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
       socketId: socket.id,
       user: socket.data.user,
       serverTime: new Date().toISOString(),
+    });
+
+    socket.emit("country_resolved", {
+      countryCode: detectedCountry,
+    });
+
+    io!.emit("user_country_update", {
+      socketId: socket.id,
+      userId: socket.data.user.id,
+      username: socket.data.user.username,
+      role: socket.data.user.role,
+      countryCode: detectedCountry,
     });
 
     socket.on("disconnect", () => {

@@ -315,14 +315,14 @@ export function viteSocketIO(): Plugin {
               success: true,
               roomId,
               messages,
-              members: members.map(m => ({ id: m.id, username: m.username, role: m.role, avatar: m.avatar, countryCode: m.countryCode, avatarFrameUrl: m.avatarFrameUrl, giftIconUrl: m.giftIconUrl })),
+              members: members.map(m => ({ id: m.id, username: m.username, role: m.role, avatar: m.avatar, countryCode: m.countryCode, avatarFrameUrl: m.avatarFrameUrl, giftIconUrl: m.giftIconUrl, status: m.status || "online" })),
               memberCount: members.length,
             });
 
             if (!isReconnect) {
               socket.to(`room:${roomId}`).emit("user_joined", {
                 socketId: socket.id,
-                user: { id: userId, username, role, avatar: userData.avatar, countryCode: userData.countryCode, avatarFrameUrl: userData.avatarFrameUrl, giftIconUrl: userData.giftIconUrl },
+                user: { id: userId, username, role, avatar: userData.avatar, countryCode: userData.countryCode, avatarFrameUrl: userData.avatarFrameUrl, giftIconUrl: userData.giftIconUrl, status: userData.status || "online" },
                 memberCount: members.length,
               });
 

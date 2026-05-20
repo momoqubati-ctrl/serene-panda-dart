@@ -28,6 +28,7 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
     messageBubbleStyle: user.messageBubbleStyle || "default",
     roomId: "",
     connectedAt: user.connectedAt,
+    status: user.status || "online",
   }).then(async () => {
     // تحديث عدد المتصلين للجميع
     const count = await getTotalOnlineCount();
@@ -51,6 +52,7 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
         avatarFrameUrl: u.avatarFrameUrl,
         giftIconUrl: u.giftIconUrl,
         roomId: u.roomId,
+        status: u.status || "online",
       }));
       callback?.({ success: true, users, count: users.length });
     } catch (err) {
@@ -85,10 +87,51 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
         messageBubbleStyle: socket.data.user.messageBubbleStyle || "default",
         roomId: socket.data.user.roomId || "",
         connectedAt: user.connectedAt,
+        status: socket.data.user.status || "online",
       });
     } catch (err) {
       console.error("Failed to update profile in Redis:", err);
     }
+  });
+
+  /**
+   * تحديث حالة الاتصال (مثل متصل، مشغول، بعيد)
+   */
+  socket.on("status_update", async (data: any) => {
+    const newStatus = String(data?.status || "online").trim();
+    const validStatuses = ["online", "idle", "busy", "away"];
+    if (!validStatuses.includes(newStatus)) return;
+
+    socket.data.user.status = newStatus;
+
+    try {
+      await addConnectedUser(socket.id, {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        avatar: socket.data.user.avatar || user.avatar,
+        countryCode: user.countryCode,
+        avatarFrameUrl: socket.data.user.avatarFrameUrl || "",
+        giftIconUrl: socket.data.user.giftIconUrl || "",
+        messageBubbleStyle: socket.data.user.messageBubbleStyle || "default",
+        roomId: socket.data.user.roomId || "",
+        connectedAt: user.connectedAt,
+        status: newStatus as any,
+      });
+    } catch (err) {
+      console.error("Failed to update status in Redis:", err);
+    }
+
+    io.emit("user_status_update", {
+      socketId: socket.id,
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      status: newStatus,
+      avatar: socket.data.user.avatar || user.avatar,
+      countryCode: user.countryCode,
+      roomId: socket.data.user.roomId || "",
+    });
   });
 
   /**

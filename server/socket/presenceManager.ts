@@ -16,7 +16,7 @@ export type OnlineUser = {
   messageBubbleStyle: string;
   roomId: string;
   connectedAt: string;
-  status: "active" | "idle" | "busy" | "away";
+  status: "online" | "active" | "idle" | "busy" | "away";
 };
 
 // الذاكرة المحلية كبديل عند تعطيل Redis أو حدوث خطأ في الاتصال
@@ -70,8 +70,15 @@ async function getDedupedOnlineUsers(): Promise<OnlineUser[]> {
     }
 
     const existing = byIdentity.get(identity);
-    if (!existing || new Date(user.connectedAt).getTime() > new Date(existing.connectedAt).getTime()) {
+    if (!existing) {
       byIdentity.set(identity, user);
+    } else {
+      const priorities: Record<string, number> = { "busy": 4, "away": 3, "idle": 2, "online": 1, "active": 1 };
+      const currentPrio = priorities[existing.status] || 0;
+      const newPrio = priorities[user.status] || 0;
+      if (newPrio > currentPrio || (newPrio === currentPrio && new Date(user.connectedAt).getTime() > new Date(existing.connectedAt).getTime())) {
+        byIdentity.set(identity, user);
+      }
     }
   }
 
@@ -105,7 +112,7 @@ export async function addConnectedUser(socketId: string, user: Omit<OnlineUser, 
       messageBubbleStyle: String(user.messageBubbleStyle),
       roomId: String(user.roomId),
       connectedAt: String(user.connectedAt),
-      status: String(user.status || "active"),
+      status: String(user.status || "online"),
     };
 
     await redis.hset(key, data);
@@ -302,6 +309,7 @@ export async function getConnectedUser(socketId: string): Promise<OnlineUser | u
       messageBubbleStyle: data.messageBubbleStyle,
       roomId: data.roomId,
       connectedAt: data.connectedAt,
+      status: (data.status || "online") as any,
     };
   } catch (err) {
     console.warn("[presence] Redis hgetall failed, using local memory fallback:", err);

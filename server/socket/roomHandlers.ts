@@ -156,6 +156,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         countryCode: m.countryCode,
         avatarFrameUrl: m.avatarFrameUrl,
         giftIconUrl: m.giftIconUrl,
+        status: m.status || "online",
       })),
       memberCount: members.length,
     });
@@ -171,6 +172,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
           countryCode: user.countryCode,
           avatarFrameUrl: user.avatarFrameUrl,
           giftIconUrl: user.giftIconUrl,
+          status: user.status || "online",
         },
         memberCount: members.length,
       }, socket.id);
