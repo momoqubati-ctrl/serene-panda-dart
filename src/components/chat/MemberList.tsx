@@ -136,12 +136,25 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [userStatuses, setUserStatuses] = useState<Map<string, string>>(new Map());
   const [userCountries, setUserCountries] = useState<Map<string, string>>(new Map());
 
-  const mergeOnlineUser = (incoming: OnlineMember) => {
+  const mergeOnlineUser = (incoming: Partial<OnlineMember> & { id: string }) => {
     const identity = getPresenceKey(incoming);
+    if (!identity) return;
+
     setOnlineUsers((prev) => {
-      const next = prev.map((user) => getPresenceKey(user) === identity ? { ...user, ...incoming } : user);
-      if (!next.some((user) => getPresenceKey(user) === identity)) {
-        next.push(incoming);
+      let found = false;
+      const next = prev.map((user) => {
+        if (getPresenceKey(user) !== identity) return user;
+        found = true;
+        const updated = { ...user } as any;
+        for (const [key, value] of Object.entries(incoming)) {
+          if (value !== undefined) {
+            updated[key] = value;
+          }
+        }
+        return updated;
+      });
+      if (!found) {
+        next.push(incoming as OnlineMember);
       }
       return next;
     });
@@ -269,15 +282,14 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         next.set(identity, data.status || "online");
         return next;
       });
-      mergeOnlineUser({
-        id: data.userId || "0",
-        socketId: data.socketId,
-        username: data.username || "",
-        role: data.role || "guest",
-        avatar: data.avatar || "/pic.png",
-        countryCode: data.countryCode || "SA",
-        roomId: data.roomId || "",
-        status: data.status || "online",
+      if (data.countryCode) {
+        setUserCountries((prev) => {
+          const next = new Map(prev);
+          next.set(identity, data.countryCode);
+          return next;
+        });
+      }
+        roomId: data.roomId,
         idreg: data.idreg,
         siteBadge: data.siteBadge,
       });
@@ -296,10 +308,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         socketId: data.socketId,
         username: data.username || "",
         role: data.role || "guest",
-        avatar: "/pic.png",
         countryCode: data.countryCode,
-        roomId: data.roomId || "",
-        status: "online",
       });
     };
 
@@ -325,28 +334,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           next.set(identity, data.status || "online");
           return next;
         });
-        if (typeof data.count === "number") {
-          setOnlineCount(data.count);
+        if (data.countryCode) {
+          setUserCountries((prev) => {
+            const next = new Map(prev);
+            next.set(identity, data.countryCode);
+            return next;
+          });
         }
-      } else {
-        fetchOnlineUsers();
-      }
-    };
-
-    const onUserDisconnected = (data: any) => {
-      if (data?.userId || data?.socketId || data?.username) {
-        removeOnlineUser({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
-        if (typeof data.count === "number") {
-          setOnlineCount(data.count);
-        }
-      } else {
-        fetchOnlineUsers();
-      }
-    };
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("online_count", onOnlineCount);
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
     socket.on("user_connected", onUserConnected);
@@ -389,11 +383,10 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
     // المستخدمون المتصلون (بدون تكرار الحالي)
     for (const user of onlineUsers) {
-      const memberIdentity = getMemberIdentity(user);
-      if (seen.has(memberIdentity)) continue;
-      seen.add(memberIdentity);
-
       const presenceIdentity = getPresenceKey(user);
+      if (seen.has(presenceIdentity)) continue;
+      seen.add(presenceIdentity);
+
       const resolvedStatus = userStatuses.get(presenceIdentity) || user.status || "online";
       const resolvedCountry = userCountries.get(presenceIdentity) || user.countryCode || "SA";
 
