@@ -389,13 +389,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
     // المستخدمون المتصلون (بدون تكرار الحالي)
     for (const user of onlineUsers) {
-      const identity = getMemberIdentity(user);
-      if (seen.has(identity)) continue;
-      seen.add(identity);
+      const memberIdentity = getMemberIdentity(user);
+      if (seen.has(memberIdentity)) continue;
+      seen.add(memberIdentity);
 
-      const identity = getPresenceKey(user);
-      const resolvedStatus = userStatuses.get(identity) || user.status || "online";
-      const resolvedCountry = userCountries.get(identity) || user.countryCode || "SA";
+      const presenceIdentity = getPresenceKey(user);
+      const resolvedStatus = userStatuses.get(presenceIdentity) || user.status || "online";
+      const resolvedCountry = userCountries.get(presenceIdentity) || user.countryCode || "SA";
 
       membersList.push({
         id: user.id,
