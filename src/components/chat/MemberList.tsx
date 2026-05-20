@@ -289,18 +289,21 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           return next;
         });
       }
-      mergeOnlineUser({
+      
+      const toMerge: any = {
         id: data.userId || "0",
         socketId: data.socketId,
         username: data.username || "",
         role: data.role || "guest",
-        status: data.status,
-        avatar: data.avatar,
-        countryCode: data.countryCode,
-        roomId: data.roomId,
-        idreg: data.idreg,
-        siteBadge: data.siteBadge,
-      });
+      };
+      if (data.status !== undefined) toMerge.status = data.status;
+      if (data.avatar !== undefined) toMerge.avatar = data.avatar;
+      if (data.countryCode !== undefined) toMerge.countryCode = data.countryCode;
+      if (data.roomId !== undefined) toMerge.roomId = data.roomId;
+      if (data.idreg !== undefined) toMerge.idreg = data.idreg;
+      if (data.siteBadge !== undefined) toMerge.siteBadge = data.siteBadge;
+
+      mergeOnlineUser(toMerge);
     };
 
     const onUserCountryUpdate = (data: { userId: string; socketId?: string; username?: string; role?: string; countryCode: string }) => {
@@ -363,11 +366,37 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       }
     };
 
+    const onCountryResolved = (data: { countryCode: string }) => {
+      if (data?.countryCode) {
+        try {
+          const raw = localStorage.getItem("user");
+          if (raw) {
+            const user = JSON.parse(raw);
+            user.countryCode = data.countryCode;
+            localStorage.setItem("user", JSON.stringify(user));
+          }
+        } catch (e) {
+          console.error("Failed to update localStorage on country_resolved:", e);
+        }
+        if (currentMember) {
+          const identity = getPresenceKey(currentMember);
+          if (identity) {
+            setUserCountries((prev) => {
+              const next = new Map(prev);
+              next.set(identity, data.countryCode);
+              return next;
+            });
+          }
+        }
+      }
+    };
+
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
     socket.on("user_connected", onUserConnected);
     socket.on("user_disconnected", onUserDisconnected);
     socket.on("room_count_update", fetchOnlineUsers);
+    socket.on("country_resolved", onCountryResolved);
 
     if (socket.connected) {
       onConnect();
@@ -387,9 +416,10 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("user_connected", onUserConnected);
       socket.off("user_disconnected", onUserDisconnected);
       socket.off("room_count_update", fetchOnlineUsers);
+      socket.off("country_resolved", onCountryResolved);
       clearInterval(interval);
     };
-  }, [fetchOnlineUsers]);
+  }, [fetchOnlineUsers, currentMember]);
 
   // ===== Build members list =====
   const members = useMemo(() => {
@@ -434,7 +464,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     }
 
     return membersList;
-  }, [currentMember, onlineUsers, myStatus, userStatuses]);
+  }, [currentMember, onlineUsers, myStatus, userStatuses, userCountries]);
 
   return (
     <div className="flex flex-col h-full bg-card">

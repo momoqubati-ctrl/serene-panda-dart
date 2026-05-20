@@ -26,6 +26,14 @@ export const COUNTRY_OPTIONS: CountryOption[] = [
   { code: "TR", name: "تركيا" },
   { code: "US", name: "الولايات المتحدة" },
   { code: "GB", name: "بريطانيا" },
+  { code: "DE", name: "ألمانيا" },
+  { code: "FR", name: "فرنسا" },
+  { code: "NL", name: "هولندا" },
+  { code: "SE", name: "السويد" },
+  { code: "IT", name: "إيطاليا" },
+  { code: "ES", name: "إسبانيا" },
+  { code: "CA", name: "كندا" },
+  { code: "AU", name: "أستراليا" },
 ];
 
 export const normalizeCountryCode = (value?: string) => {

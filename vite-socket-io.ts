@@ -207,6 +207,11 @@ export function viteSocketIO(): Plugin {
                 io!.emit("user_country_update", {
                   socketId: socket.id,
                   userId: u.id,
+                  username: u.username,
+                  role: u.role,
+                  countryCode: cc,
+                });
+                socket.emit("country_resolved", {
                   countryCode: cc,
                 });
               }
@@ -572,7 +577,7 @@ export function viteSocketIO(): Plugin {
                 idreg: u.idreg, siteBadge: u.siteBadge,
               });
             } else {
-              const priorities: Record<string, number> = { "online": 4, "busy": 3, "idle": 2, "away": 1 };
+              const priorities: Record<string, number> = { "busy": 4, "away": 3, "idle": 2, "online": 1 };
               const currentPrio = priorities[existing.status] || 0;
               const newPrio = priorities[u.status || "online"] || 0;
               if (newPrio > currentPrio) {
@@ -603,6 +608,10 @@ export function viteSocketIO(): Plugin {
             role: user.role,
             status: newStatus,
             idreg: user.idreg,
+            avatar: user.avatar,
+            countryCode: user.countryCode,
+            roomId: user.roomId,
+            siteBadge: user.siteBadge,
           });
         });
 

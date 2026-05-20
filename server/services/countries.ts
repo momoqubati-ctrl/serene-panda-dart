@@ -21,6 +21,14 @@ const SUPPORTED_COUNTRIES = new Set([
   "TR",
   "US",
   "GB",
+  "DE",
+  "FR",
+  "NL",
+  "SE",
+  "IT",
+  "ES",
+  "CA",
+  "AU",
 ]);
 
 export const normalizeCountryCode = (value?: string) => {
