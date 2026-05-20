@@ -120,6 +120,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [onlineCount, setOnlineCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [myStatus, setMyStatus] = useState<PresenceStatus>("online");
+  const myStatusRef = useRef<PresenceStatus>("online");
   const [userStatuses, setUserStatuses] = useState<Map<string, string>>(new Map());
   const [userCountries, setUserCountries] = useState<Map<string, string>>(new Map());
 
@@ -135,6 +136,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     if (storedManual === "busy" || storedManual === "away") {
       manualStatusRef.current = storedManual;
       setMyStatus(storedManual as PresenceStatus);
+      myStatusRef.current = storedManual as PresenceStatus;
       // Emit to server
       const socket = getSocket();
       socket.emit("status_update", { status: storedManual });
@@ -152,6 +154,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         if (prev !== "online" && !manualStatusRef.current) {
           const socket = getSocket();
           socket.emit("status_update", { status: "online" });
+          myStatusRef.current = "online";
           return "online";
         }
         return prev;
@@ -161,6 +164,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       idleTimerRef.current = setTimeout(() => {
         if (manualStatusRef.current) return;
         setMyStatus("idle");
+        myStatusRef.current = "idle";
         const socket = getSocket();
         socket.emit("status_update", { status: "idle" });
       }, IDLE_TIMEOUT_MS);
@@ -206,6 +210,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     const onConnect = () => {
       setIsConnected(true);
       fetchOnlineUsers();
+      socket.emit("status_update", { status: manualStatusRef.current || myStatusRef.current });
     };
 
     const onDisconnect = () => {
@@ -241,6 +246,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     socket.on("online_count", onOnlineCount);
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
+    socket.on("room_count_update", fetchOnlineUsers);
 
     if (socket.connected) {
       onConnect();
@@ -257,6 +263,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("online_count", onOnlineCount);
       socket.off("user_status_update", onUserStatusUpdate);
       socket.off("user_country_update", onUserCountryUpdate);
+      socket.off("room_count_update", fetchOnlineUsers);
       clearInterval(interval);
     };
   }, [fetchOnlineUsers]);
@@ -268,7 +275,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
     // المستخدم الحالي أولاً
     if (currentMember) {
-      membersList.push({ ...currentMember, status: myStatus });
+      const resolvedCountry = userCountries.get(currentMember.id) || currentMember.country;
+      membersList.push({ ...currentMember, status: myStatus, country: resolvedCountry });
       seen.add(getMemberIdentity(currentMember));
     }
 

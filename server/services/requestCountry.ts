@@ -44,8 +44,10 @@ export function getSocketIp(socket: any): string {
 }
 
 export async function lookupCountryCodeByIp(ip: string): Promise<string> {
-  const cleanIp = ip.trim().replace(/^.*:/, ""); 
-  
+  let cleanIp = ip.trim();
+  if (cleanIp.startsWith("::ffff:")) {
+    cleanIp = cleanIp.substring(7);
+  }
   if (
     !cleanIp || 
     cleanIp === "127.0.0.1" || 
