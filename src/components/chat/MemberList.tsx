@@ -17,6 +17,7 @@ interface MemberListProps {
 
 type OnlineMember = {
   id: string;
+  socketId?: string;
   username: string;
   role: string;
   avatar: string;
@@ -27,6 +28,15 @@ type OnlineMember = {
   status?: string;
   idreg?: string;
   siteBadge?: string;
+};
+
+const getPresenceKey = (member: { id?: string; socketId?: string; username?: string; name?: string; role?: string }) => {
+  const id = String(member.id || "").trim();
+  if (id && id !== "0") return `id:${id}`;
+  if (member.socketId) return `socket:${member.socketId}`;
+  const name = String(member.username || member.name || "").trim().toLowerCase();
+  if (name && member.role !== "guest") return `username:${name}`;
+  return `guest:${name || "anonymous"}`;
 };
 
 // ===== Status Utilities =====
@@ -126,6 +136,32 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [userStatuses, setUserStatuses] = useState<Map<string, string>>(new Map());
   const [userCountries, setUserCountries] = useState<Map<string, string>>(new Map());
 
+  const mergeOnlineUser = (incoming: OnlineMember) => {
+    const identity = getPresenceKey(incoming);
+    setOnlineUsers((prev) => {
+      const next = prev.map((user) => getPresenceKey(user) === identity ? { ...user, ...incoming } : user);
+      if (!next.some((user) => getPresenceKey(user) === identity)) {
+        next.push(incoming);
+      }
+      return next;
+    });
+  };
+
+  const removeOnlineUser = (target: { id?: string; socketId?: string; username?: string; name?: string; role?: string }) => {
+    const identity = getPresenceKey(target);
+    setOnlineUsers((prev) => prev.filter((user) => getPresenceKey(user) !== identity));
+    setUserStatuses((prev) => {
+      const next = new Map(prev);
+      next.delete(identity);
+      return next;
+    });
+    setUserCountries((prev) => {
+      const next = new Map(prev);
+      next.delete(identity);
+      return next;
+    });
+  };
+
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualStatusRef = useRef<string | null>(null);
 
@@ -195,10 +231,10 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         const newStatuses = new Map<string, string>();
         const newCountries = new Map<string, string>();
         for (const u of res.users || []) {
-          if (u.id) {
-            newStatuses.set(u.id, u.status || "online");
-            newCountries.set(u.id, u.countryCode || "SA");
-          }
+          const key = getPresenceKey(u);
+          if (!key) continue;
+          newStatuses.set(key, u.status || "online");
+          newCountries.set(key, u.countryCode || "SA");
         }
         setUserStatuses(newStatuses);
         setUserCountries(newCountries);
@@ -225,46 +261,68 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     };
 
     // Listen for real-time status updates from other users
-    const onUserStatusUpdate = (data: { userId: string; status: string }) => {
-      if (!data?.userId) return;
+    const onUserStatusUpdate = (data: any) => {
+      if (!data?.userId && !data?.socketId) return;
+      const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
       setUserStatuses((prev) => {
         const next = new Map(prev);
-        next.set(data.userId, data.status);
+        next.set(identity, data.status || "online");
         return next;
+      });
+      mergeOnlineUser({
+        id: data.userId || "0",
+        socketId: data.socketId,
+        username: data.username || "",
+        role: data.role || "guest",
+        avatar: data.avatar || "/pic.png",
+        countryCode: data.countryCode || "SA",
+        roomId: data.roomId || "",
+        status: data.status || "online",
+        idreg: data.idreg,
+        siteBadge: data.siteBadge,
       });
     };
 
-    const onUserCountryUpdate = (data: { userId: string; countryCode: string }) => {
-      if (!data?.userId) return;
+    const onUserCountryUpdate = (data: { userId: string; socketId?: string; username?: string; role?: string; countryCode: string }) => {
+      if (!data?.userId && !data?.socketId) return;
+      const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
       setUserCountries((prev) => {
         const next = new Map(prev);
-        next.set(data.userId, data.countryCode);
+        next.set(identity, data.countryCode);
         return next;
+      });
+      mergeOnlineUser({
+        id: data.userId || "0",
+        socketId: data.socketId,
+        username: data.username || "",
+        role: data.role || "guest",
+        avatar: "/pic.png",
+        countryCode: data.countryCode,
+        roomId: data.roomId || "",
+        status: "online",
       });
     };
 
     const onUserConnected = (data: any) => {
-      if (data?.userId) {
-        setOnlineUsers((prev) => {
-          const next = prev.filter((u) => u.id !== data.userId);
-          next.push({
-            id: data.userId,
-            username: data.username,
-            role: data.role,
-            avatar: data.avatar || "/pic.png",
-            countryCode: data.countryCode || "SA",
-            avatarFrameUrl: data.avatarFrameUrl || "",
-            giftIconUrl: data.giftIconUrl || "",
-            roomId: data.roomId || "",
-            status: data.status || "online",
-            idreg: data.idreg,
-            siteBadge: data.siteBadge,
-          });
-          return next;
+      if (data?.userId || data?.socketId || data?.username) {
+        mergeOnlineUser({
+          id: data.userId || "0",
+          socketId: data.socketId,
+          username: data.username || "زائر",
+          role: data.role || "guest",
+          avatar: data.avatar || "/pic.png",
+          countryCode: data.countryCode || "SA",
+          avatarFrameUrl: data.avatarFrameUrl || "",
+          giftIconUrl: data.giftIconUrl || "",
+          roomId: data.roomId || "",
+          status: data.status || "online",
+          idreg: data.idreg,
+          siteBadge: data.siteBadge,
         });
+        const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
         setUserStatuses((prev) => {
           const next = new Map(prev);
-          next.set(data.userId, data.status || "online");
+          next.set(identity, data.status || "online");
           return next;
         });
         if (typeof data.count === "number") {
@@ -276,13 +334,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
     };
 
     const onUserDisconnected = (data: any) => {
-      if (data?.userId) {
-        setOnlineUsers((prev) => prev.filter((u) => u.id !== data.userId));
-        setUserStatuses((prev) => {
-          const next = new Map(prev);
-          next.delete(data.userId);
-          return next;
-        });
+      if (data?.userId || data?.socketId || data?.username) {
+        removeOnlineUser({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
         if (typeof data.count === "number") {
           setOnlineCount(data.count);
         }
@@ -340,8 +393,9 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       if (seen.has(identity)) continue;
       seen.add(identity);
 
-      const resolvedStatus = userStatuses.get(user.id) || user.status || "online";
-      const resolvedCountry = userCountries.get(user.id) || user.countryCode || "SA";
+      const identity = getPresenceKey(user);
+      const resolvedStatus = userStatuses.get(identity) || user.status || "online";
+      const resolvedCountry = userCountries.get(identity) || user.countryCode || "SA";
 
       membersList.push({
         id: user.id,

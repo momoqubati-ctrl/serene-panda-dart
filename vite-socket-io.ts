@@ -547,16 +547,25 @@ export function viteSocketIO(): Plugin {
         });
 
         // ===== Presence Events =====
+        const getPresenceKey = (user: Pick<OnlineUser, "id" | "socketId" | "username" | "role">) => {
+          const id = String(user.id || "").trim();
+          if (id && id !== "0") return `id:${id}`;
+          if (user.socketId) return `socket:${user.socketId}`;
+          const name = String(user.username || "").trim().toLowerCase();
+          if (name && user.role !== "guest") return `username:${name}`;
+          return `guest:${name || "anonymous"}`;
+        };
+
         socket.on("get_online_users", (callback?: any) => {
           const uniqueUsers = new Map<string, any>();
           
           for (const u of connectedUsers.values()) {
-            const uniqueId = u.id;
-            const existing = uniqueUsers.get(uniqueId);
+            const uniqueKey = getPresenceKey(u);
+            const existing = uniqueUsers.get(uniqueKey);
             
             if (!existing) {
-              uniqueUsers.set(uniqueId, {
-                id: u.id, username: u.username, role: u.role, avatar: u.avatar,
+              uniqueUsers.set(uniqueKey, {
+                id: u.id, socketId: u.socketId, username: u.username, role: u.role, avatar: u.avatar,
                 countryCode: u.countryCode, avatarFrameUrl: u.avatarFrameUrl,
                 giftIconUrl: u.giftIconUrl, roomId: u.roomId,
                 status: u.status || "online",
@@ -591,7 +600,9 @@ export function viteSocketIO(): Plugin {
             socketId: socket.id,
             userId: user.id,
             username: user.username,
+            role: user.role,
             status: newStatus,
+            idreg: user.idreg,
           });
         });
 
