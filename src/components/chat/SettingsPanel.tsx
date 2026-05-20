@@ -134,12 +134,15 @@ const SettingsPanel = () => {
       });
 
       const data = await res.json();
-      if (data.success) {
+        if (data.success) {
         // Update local storage user details
         const storedUserRaw = localStorage.getItem("user");
         if (storedUserRaw) {
           const user = JSON.parse(storedUserRaw);
-          if (data.updates.avatar) user.avatar = data.updates.avatar;
+          if (data.updates.avatar) {
+            user.avatar = data.updates.avatar;
+            user.avatarUrl = data.updates.avatar;
+          }
           if (data.updates.cover) {
             user.profileCover = data.updates.cover;
             user.profileBannerUrl = data.updates.cover;
@@ -152,6 +155,7 @@ const SettingsPanel = () => {
         const socket = getSocket();
         socket.emit("profile_update", {
           avatar: data.updates.avatar,
+          avatarUrl: data.updates.avatar,
           cover: data.updates.cover,
           profileMsg: data.updates.profileMsg
         });

@@ -628,6 +628,7 @@ export function viteSocketIO(): Plugin {
             userId: user.id,
             username: user.username,
             avatar: data.avatar || user.avatar,
+            avatarUrl: data.avatarUrl || data.avatar || user.avatar,
             profileCover: data.profileCover || data.cover,
             profileMsg: data.profileMsg,
           });
