@@ -28,6 +28,9 @@ type OnlineMember = {
   status?: string;
   idreg?: string;
   siteBadge?: string;
+  avatarUrl?: string;
+  profileCover?: string;
+  statusMsg?: string;
 };
 
 const getPresenceKey = (member: { id?: string; socketId?: string; username?: string; name?: string; role?: string }) => {
@@ -93,7 +96,7 @@ const getCurrentMember = () => {
       rep: Number(user.rep) || 0,
       coins: Number(user.coins) || 0,
       giftsReceivedCount: Number(user.giftsReceivedCount) || 0,
-      avatar: typeof user.avatar === "string" && user.avatar.trim() ? user.avatar : "/pic.png",
+      avatar: (typeof user.avatar === "string" && user.avatar.trim()) || (typeof user.avatarUrl === "string" && user.avatarUrl.trim()) ? (user.avatar || user.avatarUrl) : "/pic.png",
       profileCover:
         typeof user.profileBannerUrl === "string" && user.profileBannerUrl.trim()
           ? user.profileBannerUrl
@@ -299,6 +302,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       };
       if (data.status !== undefined) toMerge.status = data.status;
       if (data.avatar !== undefined) toMerge.avatar = data.avatar;
+      if (data.avatarUrl !== undefined && !toMerge.avatar) toMerge.avatar = data.avatarUrl;
       if (data.countryCode !== undefined) toMerge.countryCode = data.countryCode;
       if (data.roomId !== undefined) toMerge.roomId = data.roomId;
       if (data.idreg !== undefined) toMerge.idreg = data.idreg;
@@ -331,7 +335,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           socketId: data.socketId,
           username: data.username || "زائر",
           role: data.role || "guest",
-          avatar: data.avatar || "/pic.png",
+          avatar: data.avatar || data.avatarUrl || "/pic.png",
           countryCode: data.countryCode || "SA",
           avatarFrameUrl: data.avatarFrameUrl || "",
           giftIconUrl: data.giftIconUrl || "",
@@ -401,7 +405,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           if (u.id === data.userId || u.username === data.username) {
             return {
               ...u,
-              avatar: data.avatar || u.avatar,
+              avatar: data.avatar || data.avatarUrl || u.avatar,
               profileCover: data.profileCover || u.profileCover,
               statusMsg: data.profileMsg !== undefined ? data.profileMsg : u.statusMsg,
             };
@@ -415,7 +419,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         if (currentSelected && (currentSelected.id === data.userId || currentSelected.name === data.username)) {
           return {
             ...currentSelected,
-            avatar: data.avatar || currentSelected.avatar,
+            avatar: data.avatar || data.avatarUrl || currentSelected.avatar,
             profileCover: data.profileCover || currentSelected.profileCover,
             statusMsg: data.profileMsg !== undefined ? data.profileMsg : currentSelected.statusMsg,
           };
@@ -494,7 +498,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         country: resolvedCountry,
         points: 0,
         rep: 0,
-        avatar: user.avatar || "/pic.png",
+        avatar: user.avatar || user.avatarUrl || "/pic.png",
         avatarFrameUrl: user.avatarFrameUrl || "",
         giftIconUrl: user.giftIconUrl || "",
         idreg: user.idreg,
