@@ -89,7 +89,7 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
               style={avatarFrameStyle}
             >
               <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={user.avatar || user.avatarUrl || "/pic.png"} />
                 <AvatarFallback>{user.name[0]}</AvatarFallback>
               </Avatar>
               <span className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></span>

@@ -70,7 +70,9 @@ const SettingsPanel = () => {
       if (!user) return null;
       return {
         name: typeof user.name === "string" && user.name.trim() ? user.name : "زائر",
-        avatar: typeof user.avatar === "string" && user.avatar.trim() ? user.avatar : "/pic.png",
+        avatar: (typeof user.avatar === "string" && user.avatar.trim()) || (typeof user.avatarUrl === "string" && user.avatarUrl.trim())
+          ? (user.avatar || user.avatarUrl)
+          : "/pic.png",
         banner:
           typeof user.profileBannerUrl === "string" && user.profileBannerUrl.trim()
             ? user.profileBannerUrl
