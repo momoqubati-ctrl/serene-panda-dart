@@ -289,6 +289,14 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
           return next;
         });
       }
+      mergeOnlineUser({
+        id: data.userId || "0",
+        socketId: data.socketId,
+        username: data.username || "",
+        role: data.role || "guest",
+        status: data.status,
+        avatar: data.avatar,
+        countryCode: data.countryCode,
         roomId: data.roomId,
         idreg: data.idreg,
         siteBadge: data.siteBadge,
@@ -341,6 +349,20 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
             return next;
           });
         }
+      }
+    };
+
+    const onUserDisconnected = (data: any) => {
+      if (data?.userId || data?.socketId || data?.username) {
+        removeOnlineUser({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
+        if (typeof data.count === "number") {
+          setOnlineCount(data.count);
+        }
+      } else {
+        fetchOnlineUsers();
+      }
+    };
+
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
     socket.on("user_connected", onUserConnected);
