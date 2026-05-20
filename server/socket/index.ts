@@ -40,10 +40,20 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
   configureSocketGateway(io, { shardId: process.env.SOCKET_SHARD_ID ?? "local" });
   initializeSocketBroker(io);
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const username = socket.handshake.auth?.username || "زائر";
     const role = socket.handshake.auth?.role || "guest";
     const userId = socket.handshake.auth?.userId || socket.id;
+
+    // تحديد كود الدولة الحقيقي بناءً على عنوان الـ IP الخاص بالعضو (مع دعم VPN)
+    let detectedCountry = "SA";
+    try {
+      const { getSocketIp, lookupCountryCodeByIp } = await import("../services/requestCountry");
+      const clientIp = getSocketIp(socket);
+      detectedCountry = await lookupCountryCodeByIp(clientIp);
+    } catch (e) {
+      console.error("Error detecting country code in server/socket/index.ts:", e);
+    }
 
     // حفظ بيانات المستخدم على الـ socket
     socket.data.user = {
@@ -51,10 +61,11 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
       username,
       role,
       avatar: socket.handshake.auth?.avatar || "/pic.png",
-      countryCode: socket.handshake.auth?.countryCode || "SA",
+      countryCode: detectedCountry,
       avatarFrameUrl: socket.handshake.auth?.avatarFrameUrl || "",
       giftIconUrl: socket.handshake.auth?.giftIconUrl || "",
       messageBubbleStyle: socket.handshake.auth?.messageBubbleStyle || "default",
+      status: socket.handshake.auth?.status || "active",
       connectedAt: new Date().toISOString(),
     };
 

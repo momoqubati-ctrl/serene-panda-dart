@@ -16,6 +16,7 @@ export type OnlineUser = {
   messageBubbleStyle: string;
   roomId: string;
   connectedAt: string;
+  status: "active" | "idle" | "busy" | "away";
 };
 
 // الذاكرة المحلية كبديل عند تعطيل Redis أو حدوث خطأ في الاتصال
@@ -104,6 +105,7 @@ export async function addConnectedUser(socketId: string, user: Omit<OnlineUser, 
       messageBubbleStyle: String(user.messageBubbleStyle),
       roomId: String(user.roomId),
       connectedAt: String(user.connectedAt),
+      status: String(user.status || "active"),
     };
 
     await redis.hset(key, data);
@@ -306,4 +308,11 @@ export async function getConnectedUser(socketId: string): Promise<OnlineUser | u
     return localUser;
   }
 }
+
+export const pendingDisconnects = new Map<string, {
+  roomId: string;
+  timeout: NodeJS.Timeout;
+  socketId: string;
+  userData: any;
+}>();
 

@@ -50,6 +50,7 @@ export function viteSocketIO(): Plugin {
       const connectedUsers = new Map<string, OnlineUser>();
       const roomMembersMap = new Map<string, Set<string>>();
       const pendingLeaves = new Map<string, { roomId: string; timeout: NodeJS.Timeout }>();
+      const pendingDisconnects = new Map<string, { roomId: string; timeout: NodeJS.Timeout; socketId: string }>();
 
       function addUser(socketId: string, data: Omit<OnlineUser, "socketId">) {
         connectedUsers.set(socketId, { ...data, socketId });
@@ -168,6 +169,26 @@ export function viteSocketIO(): Plugin {
             pendingLeaves.delete(socket.id);
           }
 
+          const userKey = userData.username;
+          const pendingDisconnect = pendingDisconnects.get(userKey);
+          let isReconnect = false;
+
+          if (pendingDisconnect) {
+            // إلغاء مؤقت الخروج بالكامل!
+            clearTimeout(pendingDisconnect.timeout);
+            pendingDisconnects.delete(userKey);
+
+            // إزالة السوكت القديم من الحضور فوراً لمنع الازدواجية
+            const oldSocketId = pendingDisconnect.socketId;
+            removeUser(oldSocketId);
+
+            if (pendingDisconnect.roomId === roomId || data?.isReconnect) {
+              isReconnect = true;
+            } else {
+              prev = pendingDisconnect.roomId;
+            }
+          }
+
           // Resolve room names and images for system messages
           let roomName = roomId;
           let roomImage = "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=400&fit=crop";
@@ -235,46 +256,48 @@ export function viteSocketIO(): Plugin {
               memberCount: members.length,
             });
 
-            socket.to(`room:${roomId}`).emit("user_joined", {
-              socketId: socket.id,
-              user: { id: userId, username, role, avatar: userData.avatar, countryCode: userData.countryCode, avatarFrameUrl: userData.avatarFrameUrl, giftIconUrl: userData.giftIconUrl },
-              memberCount: members.length,
-            });
-
-            // Broadcast live counter update globally for the new room
-            io!.emit("room_count_update", { roomId, memberCount: members.length });
-
-            // Broadcast entrance/transition message to new room
-            if (prev && prev !== roomId) {
-              io!.to(`room:${roomId}`).emit("system_message", {
-                text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
-                roomId,
-                systemType: "join",
-                user: {
-                  id: userData.id,
-                  username: userData.username,
-                  role: userData.role,
-                  avatar: userData.avatar,
-                  countryCode: userData.countryCode,
-                  avatarFrameUrl: userData.avatarFrameUrl,
-                  giftIconUrl: userData.giftIconUrl,
-                }
+            if (!isReconnect) {
+              socket.to(`room:${roomId}`).emit("user_joined", {
+                socketId: socket.id,
+                user: { id: userId, username, role, avatar: userData.avatar, countryCode: userData.countryCode, avatarFrameUrl: userData.avatarFrameUrl, giftIconUrl: userData.giftIconUrl },
+                memberCount: members.length,
               });
-            } else {
-              io!.to(`room:${roomId}`).emit("system_message", {
-                text: `دخل الغرفة`,
-                roomId,
-                systemType: "join",
-                user: {
-                  id: userData.id,
-                  username: userData.username,
-                  role: userData.role,
-                  avatar: userData.avatar,
-                  countryCode: userData.countryCode,
-                  avatarFrameUrl: userData.avatarFrameUrl,
-                  giftIconUrl: userData.giftIconUrl,
-                }
-              });
+
+              // Broadcast live counter update globally for the new room
+              io!.emit("room_count_update", { roomId, memberCount: members.length });
+
+              // Broadcast entrance/transition message to new room
+              if (prev && prev !== roomId) {
+                io!.to(`room:${roomId}`).emit("system_message", {
+                  text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
+                  roomId,
+                  systemType: "join",
+                  user: {
+                    id: userData.id,
+                    username: userData.username,
+                    role: userData.role,
+                    avatar: userData.avatar,
+                    countryCode: userData.countryCode,
+                    avatarFrameUrl: userData.avatarFrameUrl,
+                    giftIconUrl: userData.giftIconUrl,
+                  }
+                });
+              } else {
+                io!.to(`room:${roomId}`).emit("system_message", {
+                  text: `دخل الغرفة`,
+                  roomId,
+                  systemType: "join",
+                  user: {
+                    id: userData.id,
+                    username: userData.username,
+                    role: userData.role,
+                    avatar: userData.avatar,
+                    countryCode: userData.countryCode,
+                    avatarFrameUrl: userData.avatarFrameUrl,
+                    giftIconUrl: userData.giftIconUrl,
+                  }
+                });
+              }
             }
 
             if (room) {
@@ -523,32 +546,58 @@ export function viteSocketIO(): Plugin {
           }
           const user = connectedUsers.get(socket.id);
           if (user?.roomId) {
-            io!.to(`room:${user.roomId}`).emit("user_left", { socketId: socket.id, username, roomId: user.roomId, memberCount: Math.max(0, getRoomCount(user.roomId) - 1) });
-            
-            // Broadcast leave system message (disconnect)
-            io!.to(`room:${user.roomId}`).emit("system_message", {
-              text: `غادر الغرفة (انقطع الاتصال)`,
-              roomId: user.roomId,
-              systemType: "leave",
-              user: {
-                id: user.id,
-                username: user.username,
-                role: user.role,
-                avatar: user.avatar,
-                countryCode: user.countryCode,
-                avatarFrameUrl: user.avatarFrameUrl,
-                giftIconUrl: user.giftIconUrl,
-              }
-            });
+            const userKey = user.username;
+            if (pendingDisconnects.has(userKey)) {
+              clearTimeout(pendingDisconnects.get(userKey)!.timeout);
+            }
 
-            // Broadcast live counter update globally
-            io!.emit("room_count_update", { roomId: user.roomId, memberCount: Math.max(0, getRoomCount(user.roomId) - 1) });
+            const runDisconnect = () => {
+              pendingDisconnects.delete(userKey);
+              const latestUser = connectedUsers.get(socket.id);
+              if (!latestUser) return;
+              const roomId = latestUser.roomId;
+
+              io!.to(`room:${roomId}`).emit("user_left", { socketId: socket.id, username, roomId, memberCount: Math.max(0, getRoomCount(roomId) - 1) });
+              
+              // Broadcast leave system message (disconnect)
+              io!.to(`room:${roomId}`).emit("system_message", {
+                text: `غادر الغرفة (انقطع الاتصال)`,
+                roomId,
+                systemType: "leave",
+                user: {
+                  id: latestUser.id,
+                  username: latestUser.username,
+                  role: latestUser.role,
+                  avatar: latestUser.avatar,
+                  countryCode: latestUser.countryCode,
+                  avatarFrameUrl: latestUser.avatarFrameUrl,
+                  giftIconUrl: latestUser.giftIconUrl,
+                }
+              });
+
+              // Broadcast live counter update globally
+              io!.emit("room_count_update", { roomId, memberCount: Math.max(0, getRoomCount(roomId) - 1) });
+
+              for (const [key, timer] of typingTimers) {
+                if (key.startsWith(`${socket.id}:`)) { clearTimeout(timer); typingTimers.delete(key); }
+              }
+              removeUser(socket.id);
+              io!.emit("online_count", { count: connectedUsers.size });
+            };
+
+            const timeout = setTimeout(() => {
+              runDisconnect();
+            }, 3000);
+
+            pendingDisconnects.set(userKey, {
+              roomId: user.roomId,
+              timeout,
+              socketId: socket.id,
+            });
+          } else {
+            removeUser(socket.id);
+            io!.emit("online_count", { count: connectedUsers.size });
           }
-          for (const [key, timer] of typingTimers) {
-            if (key.startsWith(`${socket.id}:`)) { clearTimeout(timer); typingTimers.delete(key); }
-          }
-          removeUser(socket.id);
-          io!.emit("online_count", { count: connectedUsers.size });
         });
       });
 

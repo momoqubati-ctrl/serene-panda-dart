@@ -3,7 +3,7 @@
  * يدير أحداث WebSocket المتعلقة بالغرف والرسائل مع دمج نظام الفلترة
  */
 import type { Server, Socket } from "socket.io";
-import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount } from "./presenceManager";
+import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount, pendingDisconnects, removeConnectedUser } from "./presenceManager";
 import { publishSocketEvent, publishGlobalEvent } from "./SocketBroker";
 import { listRooms, addMessage, listMessages } from "../services/chatStore";
 import { processText } from "../services/filterService";
@@ -39,6 +39,29 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       clearTimeout(pendingLeave.timeout);
       previousRoomId = pendingLeave.roomId;
       pendingLeaves.delete(socket.id);
+    }
+
+    const userKey = user.username;
+    const pendingDisconnect = pendingDisconnects.get(userKey);
+    let isReconnect = false;
+
+    if (pendingDisconnect) {
+      // إلغاء مؤقت الخروج بالكامل!
+      clearTimeout(pendingDisconnect.timeout);
+      if (pendingDisconnect.presenceTimeout) {
+        clearTimeout(pendingDisconnect.presenceTimeout);
+      }
+      pendingDisconnects.delete(userKey);
+
+      // إزالة السوكت القديم من الحضور فوراً لمنع الازدواجية
+      const oldSocketId = pendingDisconnect.socketId;
+      await removeConnectedUser(oldSocketId);
+
+      if (pendingDisconnect.roomId === roomId) {
+        isReconnect = true;
+      } else {
+        previousRoomId = pendingDisconnect.roomId;
+      }
     }
     
     // Resolve room names and images for system messages
@@ -137,29 +160,9 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       memberCount: members.length,
     });
 
-    await publishSocketEvent(roomId, "user_joined", {
-      socketId: socket.id,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        avatar: user.avatar,
-        countryCode: user.countryCode,
-        avatarFrameUrl: user.avatarFrameUrl,
-        giftIconUrl: user.giftIconUrl,
-      },
-      memberCount: members.length,
-    }, socket.id);
-
-    // Broadcast live counter update globally for the joined room
-    await publishGlobalEvent("room_count_update", { roomId, memberCount: members.length });
-
-    // Broadcast transition/entrance system message to the new room
-    if (previousRoomId && previousRoomId !== roomId) {
-      await publishSocketEvent(roomId, "system_message", {
-        text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
-        roomId,
-        systemType: "join",
+    if (!isReconnect) {
+      await publishSocketEvent(roomId, "user_joined", {
+        socketId: socket.id,
         user: {
           id: user.id,
           username: user.username,
@@ -168,23 +171,45 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
           countryCode: user.countryCode,
           avatarFrameUrl: user.avatarFrameUrl,
           giftIconUrl: user.giftIconUrl,
-        }
-      });
-    } else {
-      await publishSocketEvent(roomId, "system_message", {
-        text: `دخل الغرفة`,
-        roomId,
-        systemType: "join",
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          avatar: user.avatar,
-          countryCode: user.countryCode,
-          avatarFrameUrl: user.avatarFrameUrl,
-          giftIconUrl: user.giftIconUrl,
-        }
-      });
+        },
+        memberCount: members.length,
+      }, socket.id);
+
+      // Broadcast live counter update globally for the joined room
+      await publishGlobalEvent("room_count_update", { roomId, memberCount: members.length });
+
+      // Broadcast transition/entrance system message to the new room
+      if (previousRoomId && previousRoomId !== roomId) {
+        await publishSocketEvent(roomId, "system_message", {
+          text: `دخل الغرفة (انتقل من: ${prevRoomName})`,
+          roomId,
+          systemType: "join",
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            avatar: user.avatar,
+            countryCode: user.countryCode,
+            avatarFrameUrl: user.avatarFrameUrl,
+            giftIconUrl: user.giftIconUrl,
+          }
+        });
+      } else {
+        await publishSocketEvent(roomId, "system_message", {
+          text: `دخل الغرفة`,
+          roomId,
+          systemType: "join",
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            avatar: user.avatar,
+            countryCode: user.countryCode,
+            avatarFrameUrl: user.avatarFrameUrl,
+            giftIconUrl: user.giftIconUrl,
+          }
+        });
+      }
     }
   });
 
@@ -312,38 +337,64 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }
     const roomId = socket.data.user.roomId;
     if (roomId) {
-      eventBus.publish({
-        type: "room.left",
-        stream: "rooms",
-        actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
-        target: { id: roomId, type: "room", roomId },
-        payload: { roomId, username: user.username, disconnected: true },
-        metadata: { roomId, source: "socket.roomHandlers.disconnect", shardKey: roomId },
-      }).catch(err => console.error("EventBus publish failed (room.left on disconnect):", err));
+      const userKey = user.username;
 
-      const memberCount = await getRoomMemberCount(roomId);
-      await publishSocketEvent(roomId, "user_left", {
-        socketId: socket.id,
-        username: user.username,
-        roomId,
-        memberCount: Math.max(0, memberCount),
-      });
+      if (pendingDisconnects.has(userKey)) {
+        clearTimeout(pendingDisconnects.get(userKey)!.timeout);
+      }
 
-      // Broadcast leave system message on disconnect
-      await publishSocketEvent(roomId, "system_message", {
-        text: `غادر الغرفة (انقطع الاتصال)`,
-        roomId,
-        systemType: "leave",
-        user: {
-          id: user.id,
+      const runDisconnect = async () => {
+        pendingDisconnects.delete(userKey);
+
+        eventBus.publish({
+          type: "room.left",
+          stream: "rooms",
+          actor: { id: user.id, username: user.username, role: user.role, socketId: socket.id, ip: socket.handshake.address },
+          target: { id: roomId, type: "room", roomId },
+          payload: { roomId, username: user.username, disconnected: true },
+          metadata: { roomId, source: "socket.roomHandlers.disconnect", shardKey: roomId },
+        }).catch(err => console.error("EventBus publish failed (room.left on disconnect):", err));
+
+        const memberCount = await getRoomMemberCount(roomId);
+        await publishSocketEvent(roomId, "user_left", {
+          socketId: socket.id,
           username: user.username,
-          role: user.role,
-          avatar: user.avatar,
-          countryCode: user.countryCode,
-          avatarFrameUrl: user.avatarFrameUrl,
-          giftIconUrl: user.giftIconUrl,
-        }
-      });
+          roomId,
+          memberCount: Math.max(0, memberCount),
+        });
+
+        // Broadcast leave system message on disconnect
+        await publishSocketEvent(roomId, "system_message", {
+          text: `غادر الغرفة (انقطع الاتصال)`,
+          roomId,
+          systemType: "leave",
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            avatar: user.avatar,
+            countryCode: user.countryCode,
+            avatarFrameUrl: user.avatarFrameUrl,
+            giftIconUrl: user.giftIconUrl,
+          }
+        });
+      };
+
+      const timeout = setTimeout(() => {
+        runDisconnect().catch(err => console.error("Delayed disconnect failed:", err));
+      }, 3000);
+
+      const existing = pendingDisconnects.get(userKey);
+      if (existing) {
+        existing.timeout = timeout;
+      } else {
+        pendingDisconnects.set(userKey, {
+          roomId,
+          timeout,
+          socketId: socket.id,
+          userData: { ...user }
+        });
+      }
     }
   });
 }

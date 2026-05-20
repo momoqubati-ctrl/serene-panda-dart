@@ -9,6 +9,7 @@ import {
   getAllOnlineUsers,
   getTotalOnlineCount,
   getRoomMemberCount,
+  pendingDisconnects,
 } from "./presenceManager";
 import { publishGlobalEvent } from "./SocketBroker";
 
@@ -95,13 +96,45 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
    */
   socket.on("disconnect", async () => {
     try {
-      const removedUser = await removeConnectedUser(socket.id);
-      const count = await getTotalOnlineCount();
-      io.emit("online_count", { count });
+      const roomId = socket.data.user.roomId;
 
-      if (removedUser && removedUser.roomId) {
-        const memberCount = await getRoomMemberCount(removedUser.roomId);
-        await publishGlobalEvent("room_count_update", { roomId: removedUser.roomId, memberCount });
+      const executeDisconnectPresence = async () => {
+        try {
+          const removedUser = await removeConnectedUser(socket.id);
+          const count = await getTotalOnlineCount();
+          io.emit("online_count", { count });
+
+          if (removedUser && removedUser.roomId) {
+            const memberCount = await getRoomMemberCount(removedUser.roomId);
+            await publishGlobalEvent("room_count_update", { roomId: removedUser.roomId, memberCount });
+          }
+        } catch (err) {
+          console.error("Failed delayed disconnect in presenceHandlers:", err);
+        }
+      };
+
+      if (roomId) {
+        const userKey = user.username;
+        const presenceTimeout = setTimeout(() => {
+          executeDisconnectPresence();
+        }, 3000);
+
+        const existing = pendingDisconnects.get(userKey);
+        if (existing) {
+          existing.presenceTimeout = presenceTimeout;
+        } else {
+          pendingDisconnects.set(userKey, {
+            roomId,
+            timeout: setTimeout(() => {}, 3000), // dummy
+            presenceTimeout,
+            socketId: socket.id,
+            userData: { ...user }
+          });
+        }
+      } else {
+        const removedUser = await removeConnectedUser(socket.id);
+        const count = await getTotalOnlineCount();
+        io.emit("online_count", { count });
       }
     } catch (err) {
       console.error("Failed to remove connected user on disconnect:", err);

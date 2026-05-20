@@ -187,6 +187,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
   const [showMics, setShowMics] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasJoinedOnceRef = useRef(false);
 
   const roomId = useMemo(() => String(room?.id ?? "general"), [room?.id]);
 
@@ -213,8 +214,9 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
     const onConnect = () => {
       setIsConnected(true);
       // الانضمام للغرفة
-      socket.emit("join_room", { roomId }, (res: any) => {
+      socket.emit("join_room", { roomId, isReconnect: hasJoinedOnceRef.current }, (res: any) => {
         if (res?.success) {
+          hasJoinedOnceRef.current = true;
           if (res.messages) {
             mergeMessages(res.messages);
           }
@@ -248,8 +250,17 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
       setMemberCount(data.memberCount);
     };
 
-    const onUserLeft = (data: { socketId: string; memberCount: number }) => {
+    const onUserLeft = (data: { socketId: string; memberCount: number; username?: string }) => {
       setMemberCount(data.memberCount);
+      if (data.username) {
+        setMembers((prev) => prev.filter((m) => m.username !== data.username));
+      }
+    };
+
+    const onRoomCountUpdate = (data: { roomId: string; memberCount: number }) => {
+      if (data.roomId === roomId) {
+        setMemberCount(data.memberCount);
+      }
     };
 
     const onUserTyping = (data: { username: string }) => {
@@ -308,6 +319,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
     socket.on("new_message", onNewMessage);
     socket.on("user_joined", onUserJoined);
     socket.on("user_left", onUserLeft);
+    socket.on("room_count_update", onRoomCountUpdate);
     socket.on("user_typing", onUserTyping);
     socket.on("system_message", onSystemMessage);
 
@@ -324,6 +336,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
       socket.off("new_message", onNewMessage);
       socket.off("user_joined", onUserJoined);
       socket.off("user_left", onUserLeft);
+      socket.off("room_count_update", onRoomCountUpdate);
       socket.off("user_typing", onUserTyping);
       socket.off("system_message", onSystemMessage);
       socket.emit("leave_room", { roomId });
