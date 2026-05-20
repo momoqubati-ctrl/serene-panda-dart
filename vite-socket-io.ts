@@ -59,6 +59,34 @@ export function viteSocketIO(): Plugin {
         connectedUsers.set(socketId, { ...data, socketId });
       }
 
+      function broadcastUserConnected(user: OnlineUser) {
+        io!.emit("user_connected", {
+          socketId: user.socketId,
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+          avatar: user.avatar,
+          countryCode: user.countryCode,
+          avatarFrameUrl: user.avatarFrameUrl,
+          giftIconUrl: user.giftIconUrl,
+          roomId: user.roomId,
+          status: user.status,
+          idreg: user.idreg,
+          siteBadge: user.siteBadge,
+          count: connectedUsers.size,
+        });
+      }
+
+      function broadcastUserDisconnected(user: OnlineUser) {
+        io!.emit("user_disconnected", {
+          socketId: user.socketId,
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+          count: connectedUsers.size,
+        });
+      }
+
       function removeUser(socketId: string) {
         const user = connectedUsers.get(socketId);
         if (user) {
@@ -151,6 +179,10 @@ export function viteSocketIO(): Plugin {
 
         addUser(socket.id, userData);
         
+        // Broadcast new connection status to all visitors
+        const connectedUser = connectedUsers.get(socket.id)!;
+        broadcastUserConnected(connectedUser);
+
         // Join moderators alerts room if authorized
         if (role === 'admin' || role === 'owner') {
           socket.join("moderators_alerts");
@@ -647,6 +679,7 @@ export function viteSocketIO(): Plugin {
                 if (key.startsWith(`${socket.id}:`)) { clearTimeout(timer); typingTimers.delete(key); }
               }
               removeUser(socket.id);
+              broadcastUserDisconnected(latestUser);
               io!.emit("online_count", { count: connectedUsers.size });
             };
 
@@ -660,7 +693,8 @@ export function viteSocketIO(): Plugin {
               socketId: socket.id,
             });
           } else {
-            removeUser(socket.id);
+            const user = removeUser(socket.id);
+            if (user) broadcastUserDisconnected(user);
             io!.emit("online_count", { count: connectedUsers.size });
           }
         });

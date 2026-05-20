@@ -243,11 +243,61 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       });
     };
 
+    const onUserConnected = (data: any) => {
+      if (data?.userId) {
+        setOnlineUsers((prev) => {
+          const next = prev.filter((u) => u.id !== data.userId);
+          next.push({
+            id: data.userId,
+            username: data.username,
+            role: data.role,
+            avatar: data.avatar || "/pic.png",
+            countryCode: data.countryCode || "SA",
+            avatarFrameUrl: data.avatarFrameUrl || "",
+            giftIconUrl: data.giftIconUrl || "",
+            roomId: data.roomId || "",
+            status: data.status || "online",
+            idreg: data.idreg,
+            siteBadge: data.siteBadge,
+          });
+          return next;
+        });
+        setUserStatuses((prev) => {
+          const next = new Map(prev);
+          next.set(data.userId, data.status || "online");
+          return next;
+        });
+        if (typeof data.count === "number") {
+          setOnlineCount(data.count);
+        }
+      } else {
+        fetchOnlineUsers();
+      }
+    };
+
+    const onUserDisconnected = (data: any) => {
+      if (data?.userId) {
+        setOnlineUsers((prev) => prev.filter((u) => u.id !== data.userId));
+        setUserStatuses((prev) => {
+          const next = new Map(prev);
+          next.delete(data.userId);
+          return next;
+        });
+        if (typeof data.count === "number") {
+          setOnlineCount(data.count);
+        }
+      } else {
+        fetchOnlineUsers();
+      }
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("online_count", onOnlineCount);
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
+    socket.on("user_connected", onUserConnected);
+    socket.on("user_disconnected", onUserDisconnected);
     socket.on("room_count_update", fetchOnlineUsers);
 
     if (socket.connected) {
@@ -265,6 +315,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("online_count", onOnlineCount);
       socket.off("user_status_update", onUserStatusUpdate);
       socket.off("user_country_update", onUserCountryUpdate);
+      socket.off("user_connected", onUserConnected);
+      socket.off("user_disconnected", onUserDisconnected);
       socket.off("room_count_update", fetchOnlineUsers);
       clearInterval(interval);
     };
