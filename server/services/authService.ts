@@ -155,7 +155,7 @@ export const registerMember = async (input: { username: string; password: string
   };
 };
 
-export const loginMember = async (input: { username: string; password: string }) => {
+export const loginMember = async (input: { username: string; password: string; countryCode?: string }) => {
   const username = normalizeUsername(input.username);
   const persisted = await findPersistedUserByUsername(username);
   const user = persisted ? persistedToStoredUser(persisted) : usersByUsername.get(username);
@@ -168,8 +168,31 @@ export const loginMember = async (input: { username: string; password: string })
     };
   }
 
+  // استخدام كود الدولة المكتشف من الـ IP بدلاً من القيمة المخزنة في قاعدة البيانات
+  // حتى يعكس العلم الموقع الحالي للمستخدم وليس مكان التسجيل
+  if (input.countryCode) {
+    user.countryCode = normalizeCountryCode(input.countryCode);
+  }
+
   return {
     ok: true as const,
     session: issueSession(user),
   };
 };
+
+export const updateInMemoryUserProfile = (username: string, updates: { avatar?: string; cover?: string; profileMsg?: string }) => {
+  const norm = normalizeUsername(username);
+  const user = usersByUsername.get(norm);
+  if (user) {
+    if (updates.avatar !== undefined) user.profile.avatar = updates.avatar;
+    if (updates.cover !== undefined) {
+      user.profile.profileCover = updates.cover;
+      user.profile.profileBannerUrl = updates.cover;
+    }
+    if (updates.profileMsg !== undefined) user.profile.profileMsg = updates.profileMsg;
+    usersByUsername.set(norm, user);
+    return user;
+  }
+  return null;
+};
+

@@ -146,3 +146,53 @@ export const createPersistedUser = async (input: CreateUserInput): Promise<Persi
     return null;
   }
 };
+
+export const updatePersistedUserProfile = async (
+  userId: string,
+  profileUpdates: {
+    avatar?: string;
+    cover?: string;
+    profileMsg?: string;
+  }
+): Promise<boolean> => {
+  if (databaseAvailable === false) return false;
+
+  try {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (profileUpdates.avatar !== undefined) {
+      fields.push(`pic = $${paramIndex++}`);
+      values.push(profileUpdates.avatar);
+    }
+    if (profileUpdates.cover !== undefined) {
+      fields.push(`pich = $${paramIndex++}`);
+      values.push(profileUpdates.cover);
+    }
+    if (profileUpdates.profileMsg !== undefined) {
+      fields.push(`msg = $${paramIndex++}`);
+      values.push(profileUpdates.profileMsg);
+    }
+
+    if (fields.length === 0) return true;
+
+    values.push(userId);
+    const userIdParam = `$${paramIndex}`;
+
+    // Checking both uid = userId and idreg = userId as legacy fallback
+    const query = `
+      UPDATE users
+      SET ${fields.join(", ")}
+      WHERE uid = ${userIdParam} OR CAST(idreg AS VARCHAR) = ${userIdParam}
+    `;
+
+    await dbPool.query(query, values);
+    databaseAvailable = true;
+    return true;
+  } catch (error) {
+    markDbUnavailable(error);
+    return false;
+  }
+};
+

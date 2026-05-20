@@ -615,6 +615,24 @@ export function viteSocketIO(): Plugin {
           });
         });
 
+        // ===== Profile Update Events =====
+        socket.on("profile_update", (data: any) => {
+          const user = connectedUsers.get(socket.id);
+          if (!user) return;
+
+          if (data.avatar) user.avatar = data.avatar;
+
+          // Broadcast the profile update to ALL connected clients
+          io!.emit("user_profile_updated", {
+            socketId: socket.id,
+            userId: user.id,
+            username: user.username,
+            avatar: data.avatar || user.avatar,
+            profileCover: data.profileCover || data.cover,
+            profileMsg: data.profileMsg,
+          });
+        });
+
         // ===== PM Events =====
         socket.on("pm_message", async (data: any, callback?: any) => {
           const toSocketId = String(data?.toSocketId || "").trim();

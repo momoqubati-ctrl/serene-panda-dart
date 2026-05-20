@@ -178,7 +178,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualStatusRef = useRef<string | null>(null);
 
-  const currentMember = useMemo(() => getCurrentMember(), []);
+  const [profileTrigger, setProfileTrigger] = useState(0);
+  const currentMember = useMemo(() => getCurrentMember(), [profileTrigger]);
 
   // ===== Idle Detection for Current User =====
   useEffect(() => {
@@ -391,12 +392,50 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       }
     };
 
+    const onUserProfileUpdated = (data: any) => {
+      if (!data?.userId) return;
+
+      // Update online users list
+      setOnlineUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === data.userId || u.username === data.username) {
+            return {
+              ...u,
+              avatar: data.avatar || u.avatar,
+              profileCover: data.profileCover || u.profileCover,
+              statusMsg: data.profileMsg !== undefined ? data.profileMsg : u.statusMsg,
+            };
+          }
+          return u;
+        })
+      );
+
+      // Check if it is the currently selected user in ProfileModal
+      setSelectedUser((currentSelected: any) => {
+        if (currentSelected && (currentSelected.id === data.userId || currentSelected.name === data.username)) {
+          return {
+            ...currentSelected,
+            avatar: data.avatar || currentSelected.avatar,
+            profileCover: data.profileCover || currentSelected.profileCover,
+            statusMsg: data.profileMsg !== undefined ? data.profileMsg : currentSelected.statusMsg,
+          };
+        }
+        return currentSelected;
+      });
+
+      // Check if it is current user
+      if (data.userId === currentMember?.id || data.username === currentMember?.name) {
+        setProfileTrigger((prev) => prev + 1);
+      }
+    };
+
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
     socket.on("user_connected", onUserConnected);
     socket.on("user_disconnected", onUserDisconnected);
     socket.on("room_count_update", fetchOnlineUsers);
     socket.on("country_resolved", onCountryResolved);
+    socket.on("user_profile_updated", onUserProfileUpdated);
 
     if (socket.connected) {
       onConnect();
@@ -417,6 +456,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("user_disconnected", onUserDisconnected);
       socket.off("room_count_update", fetchOnlineUsers);
       socket.off("country_resolved", onCountryResolved);
+      socket.off("user_profile_updated", onUserProfileUpdated);
       clearInterval(interval);
     };
   }, [fetchOnlineUsers, currentMember]);

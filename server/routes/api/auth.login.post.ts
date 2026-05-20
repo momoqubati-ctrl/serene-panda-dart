@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { loginMember } from "../../services/authService";
+import { detectCountryCode } from "../../services/requestCountry";
 
 export default defineEventHandler(async (event) => {
   try {
@@ -15,7 +16,9 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    const result = await loginMember({ username, password });
+    // كشف كود الدولة من الـ IP الحالي وليس من قاعدة البيانات
+    const countryCode = detectCountryCode(event);
+    const result = await loginMember({ username, password, countryCode });
     if (!result.ok) {
       setResponseStatus(event, 401);
       return {

@@ -314,6 +314,36 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
       }
     };
 
+    const onUserProfileUpdated = (data: any) => {
+      if (!data?.userId) return;
+
+      // Update room members list
+      setMembers((prev) =>
+        prev.map((m) => {
+          if (m.id === data.userId || m.username === data.username) {
+            return {
+              ...m,
+              avatar: data.avatar || m.avatar,
+            };
+          }
+          return m;
+        })
+      );
+
+      // Update room messages avatars
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.user === data.username) {
+            return {
+              ...msg,
+              avatar: data.avatar || msg.avatar,
+            };
+          }
+          return msg;
+        })
+      );
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("new_message", onNewMessage);
@@ -322,6 +352,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
     socket.on("room_count_update", onRoomCountUpdate);
     socket.on("user_typing", onUserTyping);
     socket.on("system_message", onSystemMessage);
+    socket.on("user_profile_updated", onUserProfileUpdated);
 
     // إذا كان متصل بالفعل، انضم للغرفة مباشرة
     if (socket.connected) {
@@ -339,6 +370,7 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
       socket.off("room_count_update", onRoomCountUpdate);
       socket.off("user_typing", onUserTyping);
       socket.off("system_message", onSystemMessage);
+      socket.off("user_profile_updated", onUserProfileUpdated);
       socket.emit("leave_room", { roomId });
     };
   }, [roomId, mergeMessages]);

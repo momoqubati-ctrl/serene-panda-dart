@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
-import { getSocket } from "@/lib/socket";
+import { getSocket, disconnectSocket } from "@/lib/socket";
 import { 
   User, 
   Palette, 
@@ -20,8 +20,19 @@ import {
   Smartphone,
   Moon,
   Sun,
-  Circle
+  Circle,
+  Camera,
+  Loader2
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { showSuccess, showError } from "@/utils/toast";
 
 type PresenceStatus = "online" | "busy" | "away";
 
@@ -34,6 +45,17 @@ const MANUAL_STATUSES: { id: PresenceStatus; label: string; color: string; dotCo
 const SettingsPanel = () => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [newAvatar, setNewAvatar] = useState<string | null>(null);
+  const [newCover, setNewCover] = useState<string | null>(null);
+  const [newStatusMsg, setNewStatusMsg] = useState("");
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   // Load current manual status from sessionStorage
   const [activeStatus, setActiveStatus] = useState<PresenceStatus>(() => {
@@ -64,7 +86,89 @@ const SettingsPanel = () => {
     } catch {
       return null;
     }
-  }, []);
+  }, [updateTrigger]);
+
+  const openEditModal = () => {
+    setNewAvatar(null);
+    setNewCover(null);
+    setNewStatusMsg(currentUser?.profileMsg === "(عضو جديد)" || currentUser?.profileMsg === "( غير مسجل )" ? "" : currentUser?.profileMsg || "");
+    setIsEditModalOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showError("حجم الصورة يجب أن لا يتجاوز 5 ميجابايت");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (type === 'avatar') {
+        setNewAvatar(result);
+      } else {
+        setNewCover(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveChanges = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await fetch("/api/user/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          avatar: newAvatar,
+          cover: newCover,
+          profileMsg: newStatusMsg
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Update local storage user details
+        const storedUserRaw = localStorage.getItem("user");
+        if (storedUserRaw) {
+          const user = JSON.parse(storedUserRaw);
+          if (data.updates.avatar) user.avatar = data.updates.avatar;
+          if (data.updates.cover) {
+            user.profileCover = data.updates.cover;
+            user.profileBannerUrl = data.updates.cover;
+          }
+          if (data.updates.profileMsg !== undefined) user.profileMsg = data.updates.profileMsg;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+
+        // Emit update to other users via socket
+        const socket = getSocket();
+        socket.emit("profile_update", {
+          avatar: data.updates.avatar,
+          cover: data.updates.cover,
+          profileMsg: data.updates.profileMsg
+        });
+
+        showSuccess("تم تحديث الملف الشخصي بنجاح");
+        setIsEditModalOpen(false);
+        setUpdateTrigger(prev => prev + 1);
+      } else {
+        showError(data.message || "فشل تحديث الملف الشخصي");
+      }
+    } catch (err) {
+      console.error(err);
+      showError("حدث خطأ أثناء الاتصال بالسيرفر");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleStatusChange = (status: PresenceStatus) => {
     setActiveStatus(status);
@@ -82,6 +186,9 @@ const SettingsPanel = () => {
   };
 
   const handleLogout = () => {
+    // Disconnect the socket connection immediately
+    disconnectSocket();
+
     // Clear manual status on logout so next login starts as "online"
     sessionStorage.removeItem("manualStatus");
     localStorage.removeItem("authToken");
@@ -192,7 +299,7 @@ const SettingsPanel = () => {
       {/* Settings Groups */}
       <div className="space-y-3">
         <h4 className="text-xs font-bold text-muted-foreground px-2 uppercase tracking-wider">الحساب والخصوصية</h4>
-        <SettingsItem icon={<User size={20} className="text-blue-500" />} label="تعديل الملف الشخصي" />
+        <SettingsItem icon={<User size={20} className="text-blue-500" />} label="تعديل الملف الشخصي" onClick={openEditModal} />
         <SettingsItem icon={<Palette size={20} className="text-purple-500" />} label="الألوان والثيمات" />
         <SettingsItem icon={<ShieldCheck size={20} className="text-green-500" />} label="إعدادات الخصوصية" />
         <SettingsItem icon={<Bell size={20} className="text-amber-500" />} label="التنبيهات والإشعارات" />
@@ -213,6 +320,104 @@ const SettingsPanel = () => {
       <div className="text-center pt-4">
         <p className="text-[10px] text-muted-foreground font-medium">إصدار التطبيق 1.0.0</p>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 bg-card border border-border text-foreground [direction:rtl]">
+          <DialogHeader className="text-right">
+            <DialogTitle className="text-lg font-bold">تعديل الملف الشخصي</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 my-4">
+            {/* Banner/Cover Upload Preview */}
+            <div className="relative h-28 rounded-2xl overflow-hidden bg-muted group border border-border">
+              <img 
+                src={newCover || currentUser?.banner || "/pich.png"} 
+                alt="Banner Preview" 
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              >
+                <Camera size={20} />
+                <span className="text-xs font-bold">تغيير الغلاف</span>
+              </button>
+              <input 
+                type="file" 
+                ref={coverInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={(e) => handleFileChange(e, 'cover')}
+              />
+            </div>
+
+            {/* Avatar Upload Preview */}
+            <div className="flex justify-center -mt-14 relative z-10">
+              <div className="relative group w-20 h-20 rounded-full overflow-hidden border-4 border-card bg-muted shadow-md">
+                <Avatar className="w-full h-full">
+                  <AvatarImage src={newAvatar || currentUser?.avatar || "/pic.png"} />
+                  <AvatarFallback>{currentUser?.name?.[0]}</AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                >
+                  <Camera size={16} />
+                </button>
+                <input 
+                  type="file" 
+                  ref={avatarInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={(e) => handleFileChange(e, 'avatar')}
+                />
+              </div>
+            </div>
+
+            {/* Status Message Msg */}
+            <div className="space-y-2">
+              <Label htmlFor="statusMsg" className="text-xs font-bold text-muted-foreground">الحالة الشخصية / الوصف</Label>
+              <Input
+                id="statusMsg"
+                type="text"
+                placeholder="اكتب شيئاً عن نفسك..."
+                value={newStatusMsg}
+                onChange={(e) => setNewStatusMsg(e.target.value)}
+                className="rounded-xl border-border bg-muted/50 text-xs font-bold"
+                maxLength={100}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              className="rounded-xl font-bold text-xs"
+              disabled={isSaving}
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveChanges}
+              className="rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-md shadow-primary/20"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : "حفظ التغييرات"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
