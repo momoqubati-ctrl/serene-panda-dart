@@ -25,6 +25,8 @@ type OnlineMember = {
   giftIconUrl?: string;
   roomId?: string;
   status?: string;
+  idreg?: string;
+  siteBadge?: string;
 };
 
 // ===== Status Utilities =====
@@ -304,7 +306,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         avatar: user.avatar || "/pic.png",
         avatarFrameUrl: user.avatarFrameUrl || "",
         giftIconUrl: user.giftIconUrl || "",
-        siteBadge: user.role === "admin" ? "مالك الموقع" : "",
+        idreg: user.idreg,
+        siteBadge: user.siteBadge || (user.role === "admin" ? "مالك الموقع" : ""),
         statusMsg: user.role === "guest" ? "( غير مسجل )" : "(عضو جديد)",
       });
     }

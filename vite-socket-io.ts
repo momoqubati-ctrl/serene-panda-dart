@@ -46,6 +46,8 @@ export function viteSocketIO(): Plugin {
         roomId: string;
         connectedAt: string;
         status: "online" | "idle" | "busy" | "away";
+        idreg?: string;
+        siteBadge?: string;
       };
 
       const connectedUsers = new Map<string, OnlineUser>();
@@ -143,6 +145,8 @@ export function viteSocketIO(): Plugin {
           roomId: "",
           connectedAt: new Date().toISOString(),
           status: "online",
+          idreg: auth.idreg || "",
+          siteBadge: auth.siteBadge || "",
         };
 
         addUser(socket.id, userData);
@@ -512,13 +516,32 @@ export function viteSocketIO(): Plugin {
 
         // ===== Presence Events =====
         socket.on("get_online_users", (callback?: any) => {
-          const users = Array.from(connectedUsers.values()).map(u => ({
-            id: u.id, username: u.username, role: u.role, avatar: u.avatar,
-            countryCode: u.countryCode, avatarFrameUrl: u.avatarFrameUrl,
-            giftIconUrl: u.giftIconUrl, roomId: u.roomId,
-            status: u.status || "online",
-          }));
-          callback?.({ success: true, users, count: users.length });
+          const uniqueUsers = new Map<string, any>();
+          
+          for (const u of connectedUsers.values()) {
+            const uniqueId = u.id;
+            const existing = uniqueUsers.get(uniqueId);
+            
+            if (!existing) {
+              uniqueUsers.set(uniqueId, {
+                id: u.id, username: u.username, role: u.role, avatar: u.avatar,
+                countryCode: u.countryCode, avatarFrameUrl: u.avatarFrameUrl,
+                giftIconUrl: u.giftIconUrl, roomId: u.roomId,
+                status: u.status || "online",
+                idreg: u.idreg, siteBadge: u.siteBadge,
+              });
+            } else {
+              const priorities: Record<string, number> = { "online": 4, "busy": 3, "idle": 2, "away": 1 };
+              const currentPrio = priorities[existing.status] || 0;
+              const newPrio = priorities[u.status || "online"] || 0;
+              if (newPrio > currentPrio) {
+                existing.status = u.status || "online";
+              }
+            }
+          }
+          
+          const users = Array.from(uniqueUsers.values());
+          callback?.({ success: true, users, count: uniqueUsers.size });
         });
 
         // ===== Status Update Events =====
