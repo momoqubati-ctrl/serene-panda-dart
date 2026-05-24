@@ -1,9 +1,8 @@
 import { defineEventHandler, getHeader, readBody, setResponseStatus } from "h3";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { updatePersistedUserProfile } from "../../../services/userRepository";
 import { updateInMemoryUserProfile } from "../../../services/authService";
+import { saveUploadBuffer } from "../../../services/uploadStorage";
 
 const getSecret = () => process.env.AUTH_SECRET || "dev-only-change-this-secret";
 
@@ -45,22 +44,12 @@ export default defineEventHandler(async (event) => {
 
     const updates: { avatar?: string; cover?: string; profileMsg?: string } = {};
 
-    // 1. Process and save base64 uploaded files
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
     if (avatar && avatar.startsWith("data:image/")) {
       const matches = avatar.match(/^data:image\/([A-Za-z0-9+]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
-        let ext = matches[1];
-        if (ext === "jpeg") ext = "jpg";
-        else if (ext === "svg+xml") ext = "svg";
         const buffer = Buffer.from(matches[2], "base64");
-        const filename = `avatar_${userId}_${Date.now()}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-        updates.avatar = `/uploads/${filename}`;
+        const savedPath = saveUploadBuffer({ kind: "avatar", userId, extension: matches[1], buffer });
+        if (savedPath) updates.avatar = savedPath;
       }
     } else if (avatar) {
       updates.avatar = avatar;
@@ -69,13 +58,9 @@ export default defineEventHandler(async (event) => {
     if (cover && cover.startsWith("data:image/")) {
       const matches = cover.match(/^data:image\/([A-Za-z0-9+]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
-        let ext = matches[1];
-        if (ext === "jpeg") ext = "jpg";
-        else if (ext === "svg+xml") ext = "svg";
         const buffer = Buffer.from(matches[2], "base64");
-        const filename = `cover_${userId}_${Date.now()}.${ext}`;
-        fs.writeFileSync(path.join(uploadsDir, filename), buffer);
-        updates.cover = `/uploads/${filename}`;
+        const savedPath = saveUploadBuffer({ kind: "cover", userId, extension: matches[1], buffer });
+        if (savedPath) updates.cover = savedPath;
       }
     } else if (cover) {
       updates.cover = cover;
