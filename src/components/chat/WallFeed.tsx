@@ -1,27 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, Mic, Search, X, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, Mic, Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { showSuccess, showError } from "@/utils/toast";
+import { getSocket } from "@/lib/socket";
+
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
 
 const WallFeed = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [postText, setPostText] = useState("");
   const [isPosting, setIsPosting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const currentUser = React.useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-      return null;
-    }
-  }, []);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentUser, setCurrentUser] = useState<any>(() => getStoredUser());
 
   const fetchPosts = async () => {
     try {
@@ -41,6 +43,59 @@ const WallFeed = () => {
     fetchPosts();
   }, []);
 
+  useEffect(() => {
+    const socket = getSocket();
+
+    const onWallPostCreated = (post: any) => {
+      if (!post?.id) {
+        fetchPosts();
+        return;
+      }
+
+      setPosts((prev) => {
+        if (prev.some((item) => String(item.id) === String(post.id))) return prev;
+        return [post, ...prev].slice(0, 50);
+      });
+    };
+
+    const onUserProfileUpdated = (data: any) => {
+      if (!data?.userId && !data?.username) return;
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          const author = post.author || {};
+          if (author.id !== data.userId && author.name !== data.username) return post;
+          return {
+            ...post,
+            author: {
+              ...author,
+              avatar: data.avatar || data.avatarUrl || author.avatar,
+            },
+          };
+        }),
+      );
+
+      const storedUser = getStoredUser();
+      if (storedUser && (storedUser.id === data.userId || storedUser.username === data.username || storedUser.name === data.username)) {
+        setCurrentUser(storedUser);
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "user") setCurrentUser(getStoredUser());
+    };
+
+    socket.on("wall_post_created", onWallPostCreated);
+    socket.on("user_profile_updated", onUserProfileUpdated);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      socket.off("wall_post_created", onWallPostCreated);
+      socket.off("user_profile_updated", onUserProfileUpdated);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   const handleCreatePost = async () => {
     if (!postText.trim() || !currentUser) return;
 
@@ -58,7 +113,12 @@ const WallFeed = () => {
       if (data.success) {
         setPostText("");
         showSuccess("تم النشر بنجاح");
-        fetchPosts();
+        if (data.post) {
+          setPosts((prev) => [data.post, ...prev.filter((post) => String(post.id) !== String(data.post.id))].slice(0, 50));
+          getSocket().emit("wall_post_created", data.post);
+        } else {
+          fetchPosts();
+        }
       } else {
         showError(data.message);
       }
@@ -69,7 +129,7 @@ const WallFeed = () => {
     }
   };
 
-  const filteredPosts = posts.filter(post => 
+  const filteredPosts = posts.filter(post =>
     post.body?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     post.author?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -78,8 +138,8 @@ const WallFeed = () => {
     <div className="flex flex-col h-full bg-muted ltr">
       <div className="p-1.5 bg-[#2c3e50] flex items-center gap-1.5">
         <div className="flex-1 relative">
-          <Input 
-            placeholder="Search wall .." 
+          <Input
+            placeholder="Search wall .."
             className="h-7 bg-card/10 border-none text-white placeholder:text-white/50 pl-7 rounded-md text-[10px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -100,8 +160,8 @@ const WallFeed = () => {
                   <AvatarImage src={currentUser.avatar || "/pic.png"} />
                   <AvatarFallback>{currentUser.name?.[0]}</AvatarFallback>
                 </Avatar>
-                <Input 
-                  placeholder="بماذا تفكر؟" 
+                <Input
+                  placeholder="بماذا تفكر؟"
                   className="flex-1 bg-slate-100 border-none h-9 text-[11px] font-medium"
                   value={postText}
                   onChange={(e) => setPostText(e.target.value)}
@@ -119,8 +179,8 @@ const WallFeed = () => {
                     <span className="text-[10px] font-bold">صوت</span>
                   </Button>
                 </div>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="h-8 rounded-lg px-4 text-[10px] font-bold"
                   onClick={handleCreatePost}
                   disabled={isPosting || !postText.trim()}
@@ -150,7 +210,7 @@ const WallFeed = () => {
                   <div dir="rtl">
                     <h4 className="font-black text-[11px] text-foreground">{post.author?.name}</h4>
                     <p className="text-[9px] text-muted-foreground font-bold">
-                      {new Date(post.createdAt).toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(post.createdAt).toLocaleString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                 </div>

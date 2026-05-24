@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: "انتهت صلاحية الجلسة" };
     }
     userId = String(parsed.sub || "");
-    username = String(parsed.name || "");
+    username = String(parsed.username || parsed.name || "");
   } catch (err) {
     setResponseStatus(event, 401);
     return { success: false, message: "توكن غير صالح" };

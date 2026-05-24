@@ -111,6 +111,30 @@ export const listMessages = (roomId: string, after?: string) => {
   return messages.filter(m => new Date(m.createdAt).getTime() > afterTime);
 };
 
+export const updateUserMessageIdentity = (
+  username: string,
+  updates: { avatar?: string; avatarFrameUrl?: string; giftIconUrl?: string; messageBubbleStyle?: string },
+) => {
+  const normalizedUsername = username.trim();
+  if (!normalizedUsername) return;
+
+  for (const [roomId, messages] of inMemoryMessages.entries()) {
+    const nextMessages = messages.map((message) => {
+      if (message.user !== normalizedUsername) return message;
+
+      return {
+        ...message,
+        avatar: updates.avatar?.trim() || message.avatar,
+        avatarFrameUrl: updates.avatarFrameUrl?.trim() || message.avatarFrameUrl,
+        giftIconUrl: updates.giftIconUrl?.trim() || message.giftIconUrl,
+        messageBubbleStyle: updates.messageBubbleStyle?.trim() || message.messageBubbleStyle,
+      };
+    });
+
+    inMemoryMessages.set(roomId, nextMessages);
+  }
+};
+
 export const addMessage = (input: {
   roomId: string;
   clientId?: string;

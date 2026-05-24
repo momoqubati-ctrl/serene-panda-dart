@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
-import { getSocket, disconnectSocket } from "@/lib/socket";
+import { getSocket, disconnectSocket, refreshSocketAuth } from "@/lib/socket";
 import { 
   User, 
   Palette, 
@@ -152,6 +152,7 @@ const SettingsPanel = () => {
           if (data.updates.profileMsg !== undefined) user.profileMsg = data.updates.profileMsg;
           localStorage.setItem("user", JSON.stringify(user));
         }
+        refreshSocketAuth();
 
         // Emit update to other users via socket
         const socket = getSocket();

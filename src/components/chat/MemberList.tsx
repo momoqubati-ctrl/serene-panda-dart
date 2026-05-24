@@ -503,7 +503,7 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         giftIconUrl: user.giftIconUrl || "",
         idreg: user.idreg,
         siteBadge: user.siteBadge || (user.role === "admin" ? "مالك الموقع" : ""),
-        statusMsg: user.role === "guest" ? "( غير مسجل )" : "(عضو جديد)",
+        statusMsg: user.statusMsg || (user.role === "guest" ? "( غير مسجل )" : "(عضو جديد)"),
       });
     }
 

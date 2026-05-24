@@ -439,11 +439,11 @@ export function viteSocketIO(): Plugin {
               user: username,
               role,
               text: finalChatText,
-              avatar: userData.avatar,
-              countryCode: userData.countryCode,
-              avatarFrameUrl: userData.avatarFrameUrl,
-              giftIconUrl: userData.giftIconUrl,
-              messageBubbleStyle: userData.messageBubbleStyle,
+              avatar: connectedUsers.get(socket.id)?.avatar || userData.avatar,
+              countryCode: connectedUsers.get(socket.id)?.countryCode || userData.countryCode,
+              avatarFrameUrl: connectedUsers.get(socket.id)?.avatarFrameUrl || userData.avatarFrameUrl,
+              giftIconUrl: connectedUsers.get(socket.id)?.giftIconUrl || userData.giftIconUrl,
+              messageBubbleStyle: connectedUsers.get(socket.id)?.messageBubbleStyle || userData.messageBubbleStyle,
             });
 
             io!.to(`room:${roomId}`).emit("new_message", { roomId, message: msg });
@@ -621,6 +621,20 @@ export function viteSocketIO(): Plugin {
           if (!user) return;
 
           if (data.avatar) user.avatar = data.avatar;
+          if (data.avatarFrameUrl) user.avatarFrameUrl = data.avatarFrameUrl;
+          if (data.giftIconUrl) user.giftIconUrl = data.giftIconUrl;
+          if (data.messageBubbleStyle) user.messageBubbleStyle = data.messageBubbleStyle;
+
+          userData.avatar = user.avatar;
+          userData.avatarFrameUrl = user.avatarFrameUrl;
+          userData.giftIconUrl = user.giftIconUrl;
+          userData.messageBubbleStyle = user.messageBubbleStyle;
+          chatStore.updateUserMessageIdentity(user.username, {
+            avatar: user.avatar,
+            avatarFrameUrl: user.avatarFrameUrl,
+            giftIconUrl: user.giftIconUrl,
+            messageBubbleStyle: user.messageBubbleStyle,
+          });
 
           // Broadcast the profile update to ALL connected clients
           io!.emit("user_profile_updated", {
@@ -630,8 +644,16 @@ export function viteSocketIO(): Plugin {
             avatar: data.avatar || user.avatar,
             avatarUrl: data.avatarUrl || data.avatar || user.avatar,
             profileCover: data.profileCover || data.cover,
+            cover: data.profileCover || data.cover,
+            avatarFrameUrl: user.avatarFrameUrl,
+            giftIconUrl: user.giftIconUrl,
+            messageBubbleStyle: user.messageBubbleStyle,
             profileMsg: data.profileMsg,
           });
+        });
+
+        socket.on("wall_post_created", (post: any) => {
+          io!.emit("wall_post_created", post);
         });
 
         // ===== PM Events =====
@@ -659,8 +681,8 @@ export function viteSocketIO(): Plugin {
             toSocketId, 
             user: username, 
             role, 
-            avatar: userData.avatar, 
-            countryCode: userData.countryCode, 
+            avatar: connectedUsers.get(socket.id)?.avatar || userData.avatar, 
+            countryCode: connectedUsers.get(socket.id)?.countryCode || userData.countryCode, 
             text: finalPmText.slice(0, 1000), 
             createdAt: new Date().toISOString() 
           };

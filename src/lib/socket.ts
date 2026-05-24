@@ -41,6 +41,12 @@ export function getSocket(): Socket {
   return socket;
 }
 
+export function refreshSocketAuth(): void {
+  if (socket) {
+    socket.auth = readSocketAuth();
+  }
+}
+
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();
