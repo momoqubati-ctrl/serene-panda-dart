@@ -191,6 +191,13 @@ const RoomPage = ({ room, onBack, onSelectRoom, isEmbedded = false }: any) => {
 
   const roomId = useMemo(() => String(room?.id ?? "general"), [room?.id]);
 
+  useEffect(() => {
+    setMessages([]);
+    setTypingUsers([]);
+    setError("");
+    setIsLoading(true);
+  }, [roomId]);
+
   const mergeMessages = useCallback((incoming: ChatMessage[]) => {
     setMessages((current) => {
       const byKey = new Map<string, ChatMessage>();

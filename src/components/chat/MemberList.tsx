@@ -274,7 +274,6 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
 
     const onOnlineCount = (data: { count: number }) => {
       setOnlineCount(data.count);
-      fetchOnlineUsers();
     };
 
     // Listen for real-time status updates from other users
@@ -366,8 +365,6 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         if (typeof data.count === "number") {
           setOnlineCount(data.count);
         }
-      } else {
-        fetchOnlineUsers();
       }
     };
 
@@ -433,11 +430,13 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       }
     };
 
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("online_count", onOnlineCount);
     socket.on("user_status_update", onUserStatusUpdate);
     socket.on("user_country_update", onUserCountryUpdate);
     socket.on("user_connected", onUserConnected);
     socket.on("user_disconnected", onUserDisconnected);
-    socket.on("room_count_update", fetchOnlineUsers);
     socket.on("country_resolved", onCountryResolved);
     socket.on("user_profile_updated", onUserProfileUpdated);
 
@@ -447,9 +446,6 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.connect();
     }
 
-    // تحديث دوري كل 10 ثوانٍ
-    const interval = setInterval(fetchOnlineUsers, 10000);
-
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -458,10 +454,8 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       socket.off("user_country_update", onUserCountryUpdate);
       socket.off("user_connected", onUserConnected);
       socket.off("user_disconnected", onUserDisconnected);
-      socket.off("room_count_update", fetchOnlineUsers);
       socket.off("country_resolved", onCountryResolved);
       socket.off("user_profile_updated", onUserProfileUpdated);
-      clearInterval(interval);
     };
   }, [fetchOnlineUsers, currentMember]);
 

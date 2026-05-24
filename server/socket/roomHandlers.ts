@@ -5,7 +5,7 @@
 import type { Server, Socket } from "socket.io";
 import { joinRoom, leaveRoom, getRoomMembers, getRoomMemberCount, pendingDisconnects, removeConnectedUser } from "./presenceManager";
 import { publishSocketEvent, publishGlobalEvent } from "./SocketBroker";
-import { listRooms, addMessage, listMessages } from "../services/chatStore";
+import { listRooms, addMessage } from "../services/chatStore";
 import { processText } from "../services/filterService";
 import { eventBus } from "../core/events/EventBus";
 import { bootstrapWorkers } from "../workers";
@@ -142,12 +142,10 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }).catch(err => console.error("EventBus publish failed (room.joined):", err));
 
     const members = await getRoomMembers(roomId);
-    const messages = listMessages(roomId);
-
     callback?.({
       success: true,
       roomId,
-      messages,
+      messages: [],
       members: members.map((m) => ({
         id: m.id,
         username: m.username,
@@ -254,10 +252,10 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         text: filterResult.filteredText,
       });
 
-      await publishSocketEvent(roomId, "new_message", {
+      publishSocketEvent(roomId, "new_message", {
         roomId,
         message,
-      });
+      }).catch((err) => console.error("publish room message failed:", err));
 
       callback?.({ success: true, message });
     } catch (error) {
@@ -400,4 +398,3 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }
   });
 }
-

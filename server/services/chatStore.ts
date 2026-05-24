@@ -33,8 +33,7 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-// In-memory message store: map of roomId -> array of messages
-const inMemoryMessages = new Map<string, ChatMessage[]>();
+// Room messages are intentionally transient: they are emitted live only and are not retained.
 const subscribersByRoom = new Map<string, Set<(message: ChatMessage) => void>>();
 
 const DEFAULT_ROOMS = [
@@ -97,42 +96,17 @@ export const listRooms = async () => {
 };
 
 export const listMessages = (roomId: string, after?: string) => {
-  const messages = inMemoryMessages.get(roomId) || [];
-  
-  if (!after) {
-    return messages;
-  }
-  
-  const afterTime = new Date(after).getTime();
-  if (isNaN(afterTime)) {
-    return messages;
-  }
-  
-  return messages.filter(m => new Date(m.createdAt).getTime() > afterTime);
+  void roomId;
+  void after;
+  return [];
 };
 
 export const updateUserMessageIdentity = (
   username: string,
   updates: { avatar?: string; avatarFrameUrl?: string; giftIconUrl?: string; messageBubbleStyle?: string },
 ) => {
-  const normalizedUsername = username.trim();
-  if (!normalizedUsername) return;
-
-  for (const [roomId, messages] of inMemoryMessages.entries()) {
-    const nextMessages = messages.map((message) => {
-      if (message.user !== normalizedUsername) return message;
-
-      return {
-        ...message,
-        avatar: updates.avatar?.trim() || message.avatar,
-        avatarFrameUrl: updates.avatarFrameUrl?.trim() || message.avatarFrameUrl,
-        giftIconUrl: updates.giftIconUrl?.trim() || message.giftIconUrl,
-        messageBubbleStyle: updates.messageBubbleStyle?.trim() || message.messageBubbleStyle,
-      };
-    });
-
-    inMemoryMessages.set(roomId, nextMessages);
-  }
+  void username;
+  void updates;
 };
 
 export const addMessage = (input: {
@@ -165,15 +139,6 @@ export const addMessage = (input: {
     isSystem: input.isSystem || false,
     createdAt: new Date().toISOString(),
   };
-
-  const roomMsgs = inMemoryMessages.get(input.roomId) || [];
-  roomMsgs.push(message);
-  
-  if (roomMsgs.length > 100) {
-    roomMsgs.shift();
-  }
-  
-  inMemoryMessages.set(input.roomId, roomMsgs);
 
   subscribersByRoom.get(input.roomId)?.forEach((callback) => callback(message));
 

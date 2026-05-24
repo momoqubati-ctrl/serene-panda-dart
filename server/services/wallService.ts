@@ -1,10 +1,21 @@
 import { dbPool } from "../db";
 
+const WALL_CACHE_TTL_MS = 30_000;
+const WALL_CACHE_LIMIT = 50;
+let cachedWallPosts: any[] | null = null;
+let cachedWallPostsAt = 0;
+let pendingWallPostsLoad: Promise<any[]> | null = null;
+
 const normalizeAssetPath = (value?: string | null, fallback = "/pic.png") => {
   const path = String(value || "").trim();
   if (!path) return fallback;
   if (/^(https?:|data:|\/)/i.test(path)) return path;
   return `/${path}`;
+};
+
+const normalizeAuthorName = (value?: string | null) => {
+  const name = String(value || "").trim();
+  return name ? name.slice(0, 80) : "";
 };
 
 const mapWallPost = (row: any) => ({
@@ -19,21 +30,46 @@ const mapWallPost = (row: any) => ({
   },
 });
 
-export const listWallPosts = async () => {
-  const result = await dbPool.query(`
-    SELECT b.id, b.msg as body, b.pic as "mediaUrl", b.uid as "authorId", b.topic as "fallbackAuthorName",
-           COALESCE(NULLIF(u.topic, ''), NULLIF(u.username, '')) as "authorName",
-           NULLIF(u.pic, '') as "authorAvatar"
-    FROM bars b
-    LEFT JOIN users u ON b.uid = u.uid OR b.uid = u.id OR b.uid = u.idreg::text OR lower(b.topic) = lower(u.username)
-    ORDER BY b.id DESC
-    LIMIT 50
-  `);
-  
-  return result.rows.map(mapWallPost);
+const setWallCache = (posts: any[]) => {
+  cachedWallPosts = posts.slice(0, WALL_CACHE_LIMIT);
+  cachedWallPostsAt = Date.now();
 };
 
-export const createWallPost = async (authorId: string, body: string, mediaUrl?: string) => {
+const isWallCacheFresh = () => cachedWallPosts && Date.now() - cachedWallPostsAt < WALL_CACHE_TTL_MS;
+
+export const listWallPosts = async () => {
+  if (isWallCacheFresh()) {
+    return cachedWallPosts!;
+  }
+
+  if (pendingWallPostsLoad) {
+    return pendingWallPostsLoad;
+  }
+
+  pendingWallPostsLoad = (async () => {
+    const result = await dbPool.query(`
+      SELECT b.id, b.msg as body, b.pic as "mediaUrl", b.uid as "authorId", b.topic as "fallbackAuthorName",
+             COALESCE(NULLIF(u.topic, ''), NULLIF(u.username, '')) as "authorName",
+             NULLIF(u.pic, '') as "authorAvatar"
+      FROM bars b
+      LEFT JOIN users u ON b.uid = u.uid OR b.uid = u.id OR b.uid = u.idreg::text OR lower(b.topic) = lower(u.username)
+      ORDER BY b.id DESC
+      LIMIT 50
+    `);
+  
+    const posts = result.rows.map(mapWallPost);
+    setWallCache(posts);
+    return posts;
+  })();
+
+  try {
+    return await pendingWallPostsLoad;
+  } finally {
+    pendingWallPostsLoad = null;
+  }
+};
+
+export const createWallPost = async (authorId: string, body: string, mediaUrl?: string, authorDisplayName?: string) => {
   const userRes = await dbPool.query(
     `SELECT uid, id, idreg, username, topic, pic
      FROM users
@@ -43,7 +79,7 @@ export const createWallPost = async (authorId: string, body: string, mediaUrl?: 
   );
   const user = userRes.rows[0];
   const legacyUserId = String(user?.uid || user?.id || user?.idreg || authorId);
-  const authorName = user?.topic || user?.username || authorId;
+  const authorName = normalizeAuthorName(user?.topic || user?.username || authorDisplayName) || authorId;
 
   const result = await dbPool.query(
     `INSERT INTO bars (uid, msg, pic, topic) 
@@ -53,11 +89,36 @@ export const createWallPost = async (authorId: string, body: string, mediaUrl?: 
   );
   
   const row = result.rows[0];
-  return mapWallPost({
+  const post = mapWallPost({
     ...row,
     authorName,
     authorAvatar: user?.pic,
     createdAt: new Date().toISOString(),
+  });
+
+  setWallCache([post, ...(cachedWallPosts || [])]);
+  return post;
+};
+
+export const updateCachedWallAuthorProfile = (
+  identity: { userId?: string; username?: string },
+  updates: { avatar?: string },
+) => {
+  if (!cachedWallPosts || !updates.avatar) return;
+
+  const userId = String(identity.userId || "").trim();
+  const username = String(identity.username || "").trim();
+
+  cachedWallPosts = cachedWallPosts.map((post) => {
+    const author = post.author || {};
+    if (String(author.id) !== userId && String(author.name) !== username) return post;
+    return {
+      ...post,
+      author: {
+        ...author,
+        avatar: updates.avatar,
+      },
+    };
   });
 };
 

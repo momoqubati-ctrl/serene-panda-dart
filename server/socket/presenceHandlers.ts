@@ -12,6 +12,7 @@ import {
   pendingDisconnects,
 } from "./presenceManager";
 import { publishGlobalEvent } from "./SocketBroker";
+import { updateCachedWallAuthorProfile } from "../services/wallService";
 
 export function registerPresenceHandlers(io: Server, socket: Socket): void {
   const user = socket.data.user;
@@ -33,6 +34,19 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
     // تحديث عدد المتصلين للجميع
     const count = await getTotalOnlineCount();
     io.emit("online_count", { count });
+    io.emit("user_connected", {
+      socketId: socket.id,
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      avatar: user.avatar,
+      countryCode: user.countryCode,
+      avatarFrameUrl: user.avatarFrameUrl || "",
+      giftIconUrl: user.giftIconUrl || "",
+      roomId: socket.data.user.roomId || "",
+      status: user.status || "online",
+      count,
+    });
   }).catch(err => {
     console.error("Failed to add connected user to presence:", err);
   });
@@ -64,14 +78,21 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
   /**
    * تحديث بيانات المستخدم (مثل تغيير الأفاتار أو الحالة)
    */
-  socket.on("update_profile", async (data: Record<string, any>) => {
+  const handleProfileUpdate = async (data: Record<string, any>) => {
     if (!data || typeof data !== "object") return;
 
-    const allowedKeys = ["avatar", "avatarFrameUrl", "giftIconUrl", "messageBubbleStyle"];
+    const allowedKeys = ["avatar", "avatarUrl", "cover", "profileCover", "profileMsg", "avatarFrameUrl", "giftIconUrl", "messageBubbleStyle"];
     for (const key of allowedKeys) {
       if (typeof data[key] === "string") {
         (socket.data.user as any)[key] = data[key].trim().slice(0, 255);
       }
+    }
+
+    if (typeof data.avatarUrl === "string" && !data.avatar) {
+      socket.data.user.avatar = data.avatarUrl.trim().slice(0, 255);
+    }
+    if (typeof data.profileCover === "string" && !data.cover) {
+      socket.data.user.cover = data.profileCover.trim().slice(0, 255);
     }
 
     // تحديث البيانات في كاش الحضور بـ Redis
@@ -92,7 +113,31 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
     } catch (err) {
       console.error("Failed to update profile in Redis:", err);
     }
-  });
+
+    updateCachedWallAuthorProfile(
+      { userId: user.id, username: user.username },
+      { avatar: socket.data.user.avatar || user.avatar },
+    );
+
+    io.emit("user_profile_updated", {
+      socketId: socket.id,
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      avatar: socket.data.user.avatar || user.avatar,
+      avatarUrl: socket.data.user.avatar || user.avatar,
+      cover: socket.data.user.cover || "",
+      profileCover: socket.data.user.cover || "",
+      profileMsg: socket.data.user.profileMsg,
+      avatarFrameUrl: socket.data.user.avatarFrameUrl || "",
+      giftIconUrl: socket.data.user.giftIconUrl || "",
+      messageBubbleStyle: socket.data.user.messageBubbleStyle || "default",
+      roomId: socket.data.user.roomId || "",
+    });
+  };
+
+  socket.on("update_profile", handleProfileUpdate);
+  socket.on("profile_update", handleProfileUpdate);
 
   /**
    * تحديث حالة الاتصال (مثل متصل، مشغول، بعيد)
@@ -146,6 +191,13 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
           const removedUser = await removeConnectedUser(socket.id);
           const count = await getTotalOnlineCount();
           io.emit("online_count", { count });
+          io.emit("user_disconnected", {
+            socketId: socket.id,
+            userId: user.id,
+            username: user.username,
+            role: user.role,
+            count,
+          });
 
           if (removedUser && removedUser.roomId) {
             const memberCount = await getRoomMemberCount(removedUser.roomId);
@@ -178,10 +230,16 @@ export function registerPresenceHandlers(io: Server, socket: Socket): void {
         const removedUser = await removeConnectedUser(socket.id);
         const count = await getTotalOnlineCount();
         io.emit("online_count", { count });
+        io.emit("user_disconnected", {
+          socketId: socket.id,
+          userId: user.id,
+          username: user.username,
+          role: user.role,
+          count,
+        });
       }
     } catch (err) {
       console.error("Failed to remove connected user on disconnect:", err);
     }
   });
 }
-

@@ -106,6 +106,7 @@ const WallFeed = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           authorId: currentUser.id,
+          authorName: currentUser.name,
           text: postText,
         }),
       });

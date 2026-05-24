@@ -5,7 +5,7 @@ import { dbPool } from "../../../db";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
-  const { authorId, text, mediaUrl } = body;
+  const { authorId, authorName, text, mediaUrl } = body;
 
   if (!authorId || !text) {
     setResponseStatus(event, 400);
@@ -18,7 +18,8 @@ export default defineEventHandler(async (event) => {
       "SELECT username, topic FROM users WHERE uid = $1 OR id = $1 OR idreg::text = $1 OR lower(username) = lower($1) LIMIT 1",
       [authorId],
     );
-    const user = userRes.rows[0] || { username: authorId, topic: authorId };
+    const fallbackAuthorName = typeof authorName === "string" && authorName.trim() ? authorName.trim().slice(0, 80) : authorId;
+    const user = userRes.rows[0] || { username: authorId, topic: fallbackAuthorName };
     const ip = getRequestHeader(event, "x-forwarded-for") || getRequestHeader(event, "x-real-ip") || "127.0.0.1";
 
     // --- تطبيق الفلترة ---
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
       user: { username: user.username, topic: user.topic, ip }
     });
 
-    const post = await createWallPost(authorId, filterRes.filteredText, mediaUrl);
+    const post = await createWallPost(authorId, filterRes.filteredText, mediaUrl, fallbackAuthorName);
     return { success: true, post };
   } catch (error) {
     console.error("Wall post error:", error);
