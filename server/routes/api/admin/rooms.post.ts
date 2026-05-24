@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, setResponseStatus } from "h3";
 import { dbPool } from "../../../db";
 import { getAdminContext } from "../../../services/adminAccess";
+import { invalidateRoomCache } from "../../../services/chatStore";
 
 export default defineEventHandler(async (event) => {
   const admin = getAdminContext(event);
@@ -93,6 +94,8 @@ export default defineEventHandler(async (event) => {
         localSendMode || "real",
       ],
     );
+
+    invalidateRoomCache();
 
     return {
       success: true,

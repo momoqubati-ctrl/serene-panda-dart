@@ -37,6 +37,11 @@ const setWallCache = (posts: any[]) => {
 
 const isWallCacheFresh = () => cachedWallPosts && Date.now() - cachedWallPostsAt < WALL_CACHE_TTL_MS;
 
+export const upsertCachedWallPost = (post: any) => {
+  if (!post?.id) return;
+  setWallCache([post, ...(cachedWallPosts || []).filter((item) => String(item.id) !== String(post.id))]);
+};
+
 export const listWallPosts = async () => {
   if (isWallCacheFresh()) {
     return cachedWallPosts!;
@@ -69,17 +74,26 @@ export const listWallPosts = async () => {
   }
 };
 
-export const createWallPost = async (authorId: string, body: string, mediaUrl?: string, authorDisplayName?: string) => {
-  const userRes = await dbPool.query(
-    `SELECT uid, id, idreg, username, topic, pic
-     FROM users
-     WHERE uid = $1 OR id = $1 OR idreg::text = $1 OR lower(username) = lower($1)
-     LIMIT 1`,
-    [authorId],
-  );
+export const createWallPost = async (
+  authorId: string,
+  body: string,
+  mediaUrl?: string,
+  authorDisplayName?: string,
+  authorRole?: string,
+) => {
+  const isGuestAuthor = authorRole === "guest" || String(authorId).startsWith("guest-");
+  const userRes = isGuestAuthor
+    ? { rows: [] as any[] }
+    : await dbPool.query(
+        `SELECT uid, id, idreg, username, topic, pic
+         FROM users
+         WHERE uid = $1 OR id = $1 OR idreg::text = $1 OR lower(username) = lower($1)
+         LIMIT 1`,
+        [authorId],
+      );
   const user = userRes.rows[0];
   const legacyUserId = String(user?.uid || user?.id || user?.idreg || authorId);
-  const authorName = normalizeAuthorName(user?.topic || user?.username || authorDisplayName) || authorId;
+  const authorName = normalizeAuthorName(isGuestAuthor ? authorDisplayName : user?.topic || user?.username || authorDisplayName) || authorId;
 
   const result = await dbPool.query(
     `INSERT INTO bars (uid, msg, pic, topic) 
@@ -96,7 +110,7 @@ export const createWallPost = async (authorId: string, body: string, mediaUrl?: 
     createdAt: new Date().toISOString(),
   });
 
-  setWallCache([post, ...(cachedWallPosts || [])]);
+  upsertCachedWallPost(post);
   return post;
 };
 

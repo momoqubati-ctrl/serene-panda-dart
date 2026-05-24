@@ -35,6 +35,10 @@ export type ChatMessage = {
 
 // Room messages are intentionally transient: they are emitted live only and are not retained.
 const subscribersByRoom = new Map<string, Set<(message: ChatMessage) => void>>();
+const ROOM_CACHE_TTL_MS = 60_000;
+let cachedRooms: ChatRoom[] | null = null;
+let cachedRoomsAt = 0;
+let pendingRoomsLoad: Promise<ChatRoom[]> | null = null;
 
 const DEFAULT_ROOMS = [
   {
@@ -55,7 +59,22 @@ const DEFAULT_ROOMS = [
   }
 ];
 
-export const listRooms = async () => {
+const cloneRooms = (rooms: ChatRoom[]) => rooms.map((room) => ({ ...room }));
+
+const setRoomCache = (rooms: ChatRoom[]) => {
+  cachedRooms = cloneRooms(rooms);
+  cachedRoomsAt = Date.now();
+};
+
+const isRoomCacheFresh = () => cachedRooms && Date.now() - cachedRoomsAt < ROOM_CACHE_TTL_MS;
+
+export const invalidateRoomCache = () => {
+  cachedRooms = null;
+  cachedRoomsAt = 0;
+  pendingRoomsLoad = null;
+};
+
+const loadRoomsFromDatabase = async () => {
   try {
     // محاولة جلب الغرف باستخدام الاستعلام المتوافق مع القاعدة القديمة
     const result = await dbPool.query(`
@@ -75,10 +94,11 @@ export const listRooms = async () => {
     `);
 
     if (result.rowCount === 0) {
+      setRoomCache(DEFAULT_ROOMS);
       return DEFAULT_ROOMS;
     }
 
-    return result.rows.map(r => ({
+    const rooms = result.rows.map(r => ({
       id: String(r.slug || r.id),
       name: r.name || "غرفة بدون اسم",
       description: r.description || "",
@@ -89,9 +109,30 @@ export const listRooms = async () => {
       likes: 0,
       locked: Boolean(r.locked),
     }));
+    setRoomCache(rooms);
+    return rooms;
   } catch (err) {
     console.error("Failed to list rooms from DB, using defaults:", err);
+    setRoomCache(DEFAULT_ROOMS);
     return DEFAULT_ROOMS;
+  }
+};
+
+export const listRooms = async () => {
+  if (isRoomCacheFresh()) {
+    return cloneRooms(cachedRooms!);
+  }
+
+  if (pendingRoomsLoad) {
+    return cloneRooms(await pendingRoomsLoad);
+  }
+
+  pendingRoomsLoad = loadRoomsFromDatabase();
+
+  try {
+    return cloneRooms(await pendingRoomsLoad);
+  } finally {
+    pendingRoomsLoad = null;
   }
 };
 
@@ -122,6 +163,7 @@ export const addMessage = (input: {
   text: string;
   isSystem?: boolean;
 }) => {
+  // Keep room messages live-only: create the payload, emit it, and discard it.
   const message: ChatMessage = {
     id: randomUUID(),
     roomId: input.roomId,

@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { updatePersistedUserProfile } from "../../../services/userRepository";
 import { updateInMemoryUserProfile } from "../../../services/authService";
 import { saveUploadBuffer } from "../../../services/uploadStorage";
+import { publishGlobalEvent } from "../../../socket/SocketBroker";
 
 const getSecret = () => process.env.AUTH_SECRET || "dev-only-change-this-secret";
 
@@ -75,6 +76,16 @@ export default defineEventHandler(async (event) => {
 
     // 3. Update in-memory fallback
     updateInMemoryUserProfile(username, updates);
+
+    publishGlobalEvent("user_profile_updated", {
+      userId,
+      username,
+      avatar: updates.avatar,
+      avatarUrl: updates.avatar,
+      cover: updates.cover,
+      profileCover: updates.cover,
+      profileMsg: updates.profileMsg,
+    }).catch((err) => console.error("profile update broadcast failed:", err));
 
     return {
       success: true,

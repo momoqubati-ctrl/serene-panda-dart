@@ -23,6 +23,22 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     socket.join("moderators_alerts");
   }
 
+  socket.on("get_rooms", async (callback?: (res: any) => void) => {
+    try {
+      const rooms = await listRooms();
+      const roomsWithCounts = await Promise.all(
+        rooms.map(async (room: any) => ({
+          ...room,
+          members: await getRoomMemberCount(room.id),
+        })),
+      );
+      callback?.({ success: true, rooms: roomsWithCounts });
+    } catch (err) {
+      console.error("get_rooms failed:", err);
+      callback?.({ success: false, message: "طھط¹ط°ط± ط¬ظ„ط¨ ط§ظ„ط؛ط±ظپ" });
+    }
+  });
+
   /**
    * دخول غرفة
    */

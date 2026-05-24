@@ -107,6 +107,7 @@ const WallFeed = () => {
         body: JSON.stringify({
           authorId: currentUser.id,
           authorName: currentUser.name,
+          authorRole: currentUser.role,
           text: postText,
         }),
       });
@@ -116,7 +117,6 @@ const WallFeed = () => {
         showSuccess("تم النشر بنجاح");
         if (data.post) {
           setPosts((prev) => [data.post, ...prev.filter((post) => String(post.id) !== String(data.post.id))].slice(0, 50));
-          getSocket().emit("wall_post_created", data.post);
         } else {
           fetchPosts();
         }

@@ -14,6 +14,7 @@ function readSocketAuth(): Record<string, string> {
       role: user.role || "guest",
       avatar: user.avatar || "/pic.png",
       countryCode: user.countryCode || "SA",
+      avatarFrameUrl: user.avatarFrameUrl || "",
       giftIconUrl: user.giftIconUrl || "",
       messageBubbleStyle: user.messageBubbleStyle || "default",
       idreg: typeof user.idreg === "string" ? user.idreg : "",
