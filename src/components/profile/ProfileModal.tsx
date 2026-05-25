@@ -20,9 +20,23 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
 
   useEffect(() => {
     if (!profileId) return;
+
+    let active = true;
+    setProfileData(null);
+    setStats(null);
     setLoading(true);
 
+    const timeoutId = window.setTimeout(() => {
+      if (!active) return;
+      setLoading(false);
+      alert("تعذر تحميل بيانات الملف الشخصي؛ يرجى المحاولة مرة أخرى.");
+      onClose();
+    }, 10000);
+
     socket.emit("profile:view", { profileId, hidden: isAdmin }, (response: any) => {
+      if (!active) return;
+      clearTimeout(timeoutId);
+
       if (response && response.success && response.profile) {
         setProfileData(response.profile);
         setStats(response.stats);
@@ -30,22 +44,25 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
         alert(response?.error || "تعذر تحميل بيانات الملف الشخصي");
         onClose();
       }
+
       setLoading(false);
     });
 
     const onProfileUpdated = (updates: any) => {
       setProfileData((prev: any) => ({
         ...prev,
-        profile: { ...prev.profile, ...updates },
+        profile: { ...prev?.profile, ...updates },
       }));
     };
 
     socket.on("profile:updated", onProfileUpdated);
 
     return () => {
+      active = false;
+      clearTimeout(timeoutId);
       socket.off("profile:updated", onProfileUpdated);
     };
-  }, [profileId, isAdmin]);
+  }, [profileId, isAdmin, onClose, socket]);
 
   if (!profileId) return null;
 
