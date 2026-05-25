@@ -1,12 +1,41 @@
 import { ShieldAlert, Edit2, UserMinus, MicOff, Settings } from "lucide-react";
 import { Button } from "../ui/button";
+import { getSocket } from "@/lib/socket";
+import { toast } from "sonner";
 
 interface ProfileAdminPanelProps {
   profileId: string;
   currentRole: string;
+  onProfilePatch?: (patch: any) => void;
 }
 
-export function ProfileAdminPanel({ profileId, currentRole }: ProfileAdminPanelProps) {
+export function ProfileAdminPanel({ profileId, currentRole, onProfilePatch }: ProfileAdminPanelProps) {
+  const socket = getSocket();
+
+  const runAction = (action: string, value?: any, reason?: string) => {
+    socket.emit("profile:adminAction", { profileId, action, value, reason }, (res: any) => {
+      if (res?.success) {
+        toast.success(res.notice || "تم تنفيذ الإجراء");
+        if (action === "nick") onProfilePatch?.({ displayName: value });
+        if (action === "message") onProfilePatch?.({ profile: { profileMsg: value } });
+        if (action === "likes") onProfilePatch?.({ stats: { likes: Number(value) || 0 } });
+        if (action === "site_badge") onProfilePatch?.({ profile: { siteBadge: value } });
+        if (action === "delete_pic") onProfilePatch?.({ profile: { avatarUrl: "/pic.png" } });
+        if (action === "history") {
+          const history = (res.history || []).map((item: any) => item.topic || item.username).filter(Boolean).join("\n");
+          alert(history || "لا يوجد سجل أسماء لهذا العضو");
+        }
+      } else {
+        toast.error(res?.error || "تعذر تنفيذ الإجراء");
+      }
+    });
+  };
+
+  const askText = (label: string, current = "") => {
+    const value = window.prompt(label, current);
+    return value === null ? undefined : value.trim();
+  };
+
   return (
     <section className="rounded-3xl border border-red-200/80 bg-red-50/80 p-4 shadow-sm dark:border-red-500/20 dark:bg-red-500/10">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -20,21 +49,146 @@ export function ProfileAdminPanel({ profileId, currentRole }: ProfileAdminPanelP
       </div>
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("اكتب النك الجديد");
+            if (value) runAction("nick", value);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
           <Edit2 className="ml-2 h-4 w-4" />
           تغيير النك
         </Button>
-        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("اكتب الرتبة الجديدة");
+            if (value) runAction("power", value);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
           <Settings className="ml-2 h-4 w-4" />
           الصلاحيات
         </Button>
-        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("global_mute", 1, "إسكات عام من البروفايل")}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
           <MicOff className="ml-2 h-4 w-4" />
           إسكات عام
         </Button>
-        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.confirm("هل تريد طرد هذا العضو؟")) runAction("kick", undefined, "طرد من البروفايل");
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
           <UserMinus className="ml-2 h-4 w-4" />
           طرد نهائي
+        </Button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("رسالة الحالة الجديدة");
+            if (value !== undefined) runAction("message", value);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          تعديل الحالة
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("عدد الإعجابات");
+            if (value !== undefined) runAction("likes", Number(value) || 0);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          تعديل اللايكات
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("وسام الموقع");
+            if (value !== undefined) runAction("site_badge", value);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          وسام الموقع
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("history")}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          كشف النكات
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const value = askText("معرف الغرفة المطلوب نقل العضو إليها");
+            if (value) runAction("room_move", value);
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          سحب لغرفة
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("room_kick", undefined, "طرد من الغرفة")}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          طرد من الغرفة
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("room_mute", 1)}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          كتم بالروم
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("room_unmute", 0)}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          فك الكتم
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => runAction("delete_pic")}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          مسح الصورة
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (window.confirm("هل تريد حظر هذا العضو؟")) runAction("ban", undefined, "حظر من البروفايل");
+          }}
+          className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200"
+        >
+          حظر نهائي
         </Button>
       </div>
     </section>

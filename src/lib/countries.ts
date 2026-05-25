@@ -38,6 +38,7 @@ export const COUNTRY_OPTIONS: CountryOption[] = [
 
 export const normalizeCountryCode = (value?: string) => {
   const code = String(value || "").trim().toUpperCase();
+  if (code === "IL") return "PS";
   return COUNTRY_OPTIONS.some((country) => country.code === code) ? code : "SA";
 };
 

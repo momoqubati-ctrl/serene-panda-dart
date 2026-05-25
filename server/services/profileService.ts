@@ -3,6 +3,18 @@ import { userProfiles, users, profileVisits, socialEdges } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { redis } from "./redis";
 
+type ProfileVisitor = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string;
+  visitedAt: string;
+  hidden: boolean;
+};
+
+const localProfileVisits = new Map<string, ProfileVisitor[]>();
+const localFollowEdges = new Set<string>();
+
 const normalizeRole = (power: unknown, username: unknown) => {
   const value = String(power || "").toLowerCase();
   const user = String(username || "").toLowerCase();
@@ -109,7 +121,7 @@ const getLegacyProfileStats = async (profileId: string) => {
   if (!normalized) return null;
 
   const result = await dbPool.query(
-    `SELECT rep, coins, evaluation, wall_post_likes
+    `SELECT rep, coins, evaluation, wall_post_likes, gifts_received_count
      FROM users
      WHERE uid = $1
         OR id = $1
@@ -128,7 +140,26 @@ const getLegacyProfileStats = async (profileId: string) => {
     likes: Number(row.wall_post_likes || 0),
     coins: Number(row.coins || 0),
     evaluation: Number(row.evaluation || 0),
+    giftsReceivedCount: Number(row.gifts_received_count || 0),
   };
+};
+
+const getFollowKey = (sourceId: string, targetId: string) => `${sourceId}->${targetId}`;
+
+const addLocalProfileVisit = async (visitorId: string, profileId: string, hidden: boolean) => {
+  if (visitorId === profileId) return;
+  const visitorProfile = await findLegacyUserProfile(visitorId).catch(() => null);
+  const visitor: ProfileVisitor = {
+    id: visitorProfile?.id || visitorId,
+    username: visitorProfile?.username || visitorId,
+    displayName: visitorProfile?.displayName || visitorProfile?.username || visitorId,
+    avatarUrl: visitorProfile?.profile?.avatarUrl || visitorProfile?.avatarUrl || "/pic.png",
+    visitedAt: new Date().toISOString(),
+    hidden,
+  };
+
+  const current = localProfileVisits.get(profileId) || [];
+  localProfileVisits.set(profileId, [visitor, ...current.filter((item) => item.id !== visitor.id)].slice(0, 30));
 };
 
 export class ProfileService {
@@ -139,6 +170,8 @@ export class ProfileService {
     if (visitorId === profileId) return; // Don't count self-views
 
     try {
+      await addLocalProfileVisit(visitorId, profileId, hidden);
+
       const [visitor, profile] = await Promise.all([
         db.query.users.findFirst({ where: eq(users.id, visitorId) }),
         db.query.users.findFirst({ where: eq(users.id, profileId) }),
@@ -192,6 +225,7 @@ export class ProfileService {
         likes: profileInfo?.wallPostLikes || 0,
         coins: profileInfo?.coins || 0,
         evaluation: profileInfo?.evaluation || 0,
+        giftsReceivedCount: profileInfo?.giftsReceivedCount || 0,
       };
     }
     
@@ -200,7 +234,34 @@ export class ProfileService {
       likes: parseInt(cachedStats.likes || "0", 10),
       coins: parseInt(cachedStats.coins || "0", 10),
       evaluation: parseInt(cachedStats.evaluation || "0", 10),
+      giftsReceivedCount: parseInt(cachedStats.giftsReceivedCount || "0", 10),
     };
+  }
+
+  static async toggleFollow(viewerId: string, profileId: string) {
+    if (viewerId === profileId) {
+      return { following: false, error: "Cannot follow yourself" };
+    }
+
+    const key = getFollowKey(viewerId, profileId);
+    if (localFollowEdges.has(key)) {
+      localFollowEdges.delete(key);
+      return { following: false };
+    }
+
+    localFollowEdges.add(key);
+    return { following: true };
+  }
+
+  static getRelationship(viewerId: string, profileId: string) {
+    return {
+      isSelf: viewerId === profileId,
+      isFollowing: localFollowEdges.has(getFollowKey(viewerId, profileId)),
+    };
+  }
+
+  static getVisitors(profileId: string) {
+    return (localProfileVisits.get(profileId) || []).filter((visitor) => !visitor.hidden);
   }
 
   /**

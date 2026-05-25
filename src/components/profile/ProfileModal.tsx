@@ -6,7 +6,7 @@ import { ProfileHeader } from "./ProfileHeader";
 import { ProfileStats } from "./ProfileStats";
 import { ProfileActions } from "./ProfileActions";
 import { ProfileAdminPanel } from "./ProfileAdminPanel";
-import { Award, Medal, MessageCircle, ShieldCheck, Sparkles, Star, Trophy, Users } from "lucide-react";
+import { Award, Eye, Medal, MessageCircle, Music2, ShieldCheck, Sparkles, Star, Trophy, Users } from "lucide-react";
 
 interface ProfileModalProps {
   profileId: string | null;
@@ -66,6 +66,8 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
   const socket = getSocket();
   const [profileData, setProfileData] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+  const [relationship, setRelationship] = useState({ isSelf: false, isFollowing: false });
+  const [visitors, setVisitors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -74,6 +76,8 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
     let active = true;
     setProfileData(null);
     setStats(null);
+    setRelationship({ isSelf: false, isFollowing: false });
+    setVisitors([]);
     setLoading(true);
 
     const timeoutId = window.setTimeout(() => {
@@ -90,6 +94,8 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
       if (response && response.success && response.profile) {
         setProfileData(response.profile);
         setStats(response.stats);
+        setRelationship(response.relationship || { isSelf: false, isFollowing: false });
+        setVisitors(response.visitors || []);
       } else {
         alert(response?.error || "تعذر تحميل بيانات الملف الشخصي");
         onClose();
@@ -120,6 +126,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
   const evaluation = Number(stats?.evaluation || profile.evaluation || 0);
   const likes = Number(stats?.likes || profile.wallPostLikes || 0);
   const coins = Number(stats?.coins || profile.coins || 0);
+  const gifts = Number(stats?.giftsReceivedCount || profile.giftsReceivedCount || 0);
   const rankName = getRankName(evaluation);
   const nextRankAt = getNextRankAt(evaluation);
   const progress = Math.min(100, Math.round((evaluation / Math.max(nextRankAt, 1)) * 100));
@@ -190,6 +197,32 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                 </div>
               </section>
 
+              {(profile?.youtubeUrl || profile?.youtube || profile?.youtub) && (
+                <section className="rounded-3xl border border-slate-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200">
+                        <Music2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-950 dark:text-white">الأغنية الشخصية</p>
+                        <p className="mt-1 max-w-md truncate text-xs font-bold text-slate-500 dark:text-slate-400" dir="ltr">
+                          {profile.youtubeUrl || profile.youtube || profile.youtub}
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={profile.youtubeUrl || profile.youtube || profile.youtub}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-11 items-center justify-center rounded-2xl bg-red-600 px-4 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700"
+                    >
+                      تشغيل
+                    </a>
+                  </div>
+                </section>
+              )}
+
               <section className="space-y-3">
                 <div className="flex items-center gap-2 text-slate-950 dark:text-white">
                   <Medal className="h-5 w-5 text-violet-600" />
@@ -218,7 +251,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                     </div>
                     <div>
                       <p className="text-sm font-black text-slate-950 dark:text-white">أعلى رتبة تم الوصول إليها</p>
-                      <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">{rankName} · {coins.toLocaleString("ar-EG")} عملة</p>
+                      <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">{rankName} · {coins.toLocaleString("ar-EG")} عملة · {gifts.toLocaleString("ar-EG")} هدية</p>
                     </div>
                   </div>
                   <div className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
@@ -228,10 +261,48 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                 </div>
               </section>
 
-              <ProfileActions profileId={profileId} />
+              {visitors.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 text-slate-950 dark:text-white">
+                    <Eye className="h-5 w-5 text-violet-600" />
+                    <h3 className="text-base font-black">من زار ملفي الشخصي</h3>
+                  </div>
+                  <div className="grid gap-2 rounded-3xl border border-slate-200/80 bg-white/85 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 sm:grid-cols-2">
+                    {visitors.slice(0, 6).map((visitor) => (
+                      <div key={`${visitor.id}-${visitor.visitedAt}`} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-2 dark:bg-slate-950/40">
+                        <img src={visitor.avatarUrl || "/pic.png"} alt="" className="h-10 w-10 rounded-full object-cover" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-slate-950 dark:text-white">{visitor.displayName || visitor.username}</p>
+                          <p className="truncate text-xs font-bold text-slate-500 dark:text-slate-400">
+                            {new Intl.DateTimeFormat("ar", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }).format(new Date(visitor.visitedAt))}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <ProfileActions
+                profileId={profileData.id || profileId}
+                isSelf={relationship.isSelf}
+                initialFollowing={relationship.isFollowing}
+                onFollowChange={(following) => setRelationship((current) => ({ ...current, isFollowing: following }))}
+              />
 
               {isAdmin && (
-                <ProfileAdminPanel profileId={profileId} currentRole={profileData.role} />
+                <ProfileAdminPanel
+                  profileId={profileData.id || profileId}
+                  currentRole={profileData.role}
+                  onProfilePatch={(patch) => {
+                    setProfileData((current: any) => ({
+                      ...current,
+                      displayName: patch.displayName ?? current.displayName,
+                      profile: { ...current.profile, ...patch.profile },
+                    }));
+                    if (patch.stats) setStats((current: any) => ({ ...current, ...patch.stats }));
+                  }}
+                />
               )}
             </div>
           </div>

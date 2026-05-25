@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
-import { Copy, Crown, MoreHorizontal, Shield, Sparkles, Verified } from "lucide-react";
+import { Copy, Crown, MoreHorizontal, Shield, Sparkles, Star, Verified } from "lucide-react";
+import { getCountryFlagSrc, getCountryName } from "@/lib/countries";
 
 interface ProfileHeaderProps {
   profile: any;
@@ -9,6 +10,13 @@ interface ProfileHeaderProps {
 
 const getDisplayName = (user: any) => String(user?.displayName || user?.username || "عضو");
 const getHandle = (user: any) => String(user?.username || user?.id || "member").replace(/\s+/g, "");
+const formatConnectedSince = (value?: string | null) => {
+  if (!value) return "";
+  const minutes = Math.max(1, Math.floor((Date.now() - Date.parse(value)) / 60000));
+  if (!Number.isFinite(minutes)) return "";
+  if (minutes < 60) return `متصل منذ ${minutes.toLocaleString("ar-EG")} دقيقة`;
+  return `متصل منذ ${Math.floor(minutes / 60).toLocaleString("ar-EG")} ساعة`;
+};
 
 export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
   const displayName = getDisplayName(user);
@@ -18,6 +26,10 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
   const avatarUrl = profile?.avatarUrl || user?.avatarUrl || "/pic.png";
   const accentColor = profile?.profileAccentColor || "#7C3AED";
   const nameColor = profile?.nameColor && profile.nameColor !== "#000000" ? profile.nameColor : undefined;
+  const countryCode = String(user?.countryCode || "SA").toUpperCase() === "IL" ? "PS" : user?.countryCode || "SA";
+  const evaluation = Number(profile?.evaluation || 0);
+  const starCount = Math.max(1, Math.min(5, Math.ceil(evaluation / 100)));
+  const connectedSince = formatConnectedSince(user?.connectedAt);
 
   return (
     <header className="relative">
@@ -88,7 +100,23 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
                 <Copy className="h-4 w-4" />
               </button>
               {profile?.idreg && <span>{profile.idreg}</span>}
-              {user?.countryCode && <span>{user.countryCode}</span>}
+              <span className="inline-flex items-center gap-1">
+                <img src={getCountryFlagSrc(countryCode)} alt={getCountryName(countryCode)} className="h-4 w-5 rounded object-cover" />
+                {getCountryName(countryCode)}
+              </span>
+              {connectedSince && <span>{connectedSince}</span>}
+            </div>
+
+            <div className="mt-3 flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star
+                  key={index}
+                  className={`h-5 w-5 ${index < starCount ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-700"}`}
+                />
+              ))}
+              <span className="mr-2 text-xs font-black text-slate-500 dark:text-slate-400">
+                {evaluation.toLocaleString("ar-EG")} نقطة تقييم
+              </span>
             </div>
 
             {profile?.profileMsg && (

@@ -1,4 +1,4 @@
-import { Star, Coins, Heart, Eye } from "lucide-react";
+import { Star, Coins, Heart, Eye, Gift } from "lucide-react";
 
 interface ProfileStatsProps {
   stats: {
@@ -6,6 +6,7 @@ interface ProfileStatsProps {
     likes: number;
     coins: number;
     evaluation: number;
+    giftsReceivedCount?: number;
   };
 }
 
@@ -39,6 +40,12 @@ export function ProfileStats({ stats }: ProfileStatsProps) {
       className: "from-amber-50 to-orange-50 text-amber-600 dark:from-amber-500/10 dark:to-orange-500/10",
     },
     {
+      label: "هدايا",
+      value: stats.giftsReceivedCount || 0,
+      icon: <Gift className="h-7 w-7" />,
+      className: "from-emerald-50 to-green-50 text-emerald-600 dark:from-emerald-500/10 dark:to-green-500/10",
+    },
+    {
       label: "زيارات",
       value: stats.views,
       icon: <Eye className="h-7 w-7" />,
@@ -47,7 +54,7 @@ export function ProfileStats({ stats }: ProfileStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       {statItems.map((item) => (
         <div
           key={item.label}
