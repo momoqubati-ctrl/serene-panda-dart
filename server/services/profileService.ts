@@ -115,33 +115,33 @@ export class ProfileService {
 
     await db.insert(profileVisits).values({
       visitorId,
-      profileId,
-      hiddenVisit: hidden,
-    });
+      try {
+        const [visitor, profile] = await Promise.all([
+          db.query.users.findFirst({ where: eq(users.id, visitorId) }),
+          db.query.users.findFirst({ where: eq(users.id, profileId) }),
+        ]);
 
-    if (!hidden) {
-      await redis.client?.hincrby(`profile:stats:${profileId}`, "views", 1);
-      // We could also broadcast real-time presence/visit here, but socket will handle it.
-    }
-  }
+        if (!visitor) {
+          console.warn(`[ProfileService] visitor ${visitorId} missing; skipping visit record`);
+          return;
+        }
+        if (!profile) {
+          console.warn(`[ProfileService] profile ${profileId} missing; skipping visit record`);
+          return;
+        }
 
-  /**
-   * Get cached stats (views, followers, etc.)
-   */
-  static async getProfileStats(profileId: string) {
-    const cachedStats = await redis.client?.hgetall(`profile:stats:${profileId}`);
-    
-    if (!cachedStats || Object.keys(cachedStats).length === 0) {
-      // Fallback: sync from DB (simplified version)
-      const profileInfo = await db.query.userProfiles.findFirst({
-        where: eq(userProfiles.userId, profileId),
-      });
-      return {
-        views: profileInfo?.rep || 0,
-        likes: profileInfo?.wallPostLikes || 0,
-        coins: profileInfo?.coins || 0,
-        evaluation: profileInfo?.evaluation || 0,
-      };
+        await db.insert(profileVisits).values({
+          visitorId,
+          profileId,
+          hiddenVisit: hidden,
+        });
+
+        if (!hidden) {
+          await redis.client?.hincrby(`profile:stats:${profileId}`, "views", 1);
+        }
+      } catch (err) {
+        console.error('[ProfileService] recordVisit error', err);
+      }
     }
     
     return {
