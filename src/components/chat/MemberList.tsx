@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, X, Wifi, WifiOff } from 'lucide-react';
-import ProfileModal from './ProfileModal';
+import { ProfileModal } from '../profile/ProfileModal';
 import { Input } from "@/components/ui/input";
 import StoriesBar from './StoriesBar';
 import { getCountryFlagSrc, normalizeCountryCode } from "@/lib/countries";
@@ -626,9 +626,9 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
       </div>
 
       <ProfileModal 
-        user={selectedUser} 
-        isOpen={!!selectedUser} 
+        profileId={selectedUser?.id || null} 
         onClose={() => setSelectedUser(null)} 
+        isAdmin={currentMember?.role === 'admin'}
       />
     </div>
   );
