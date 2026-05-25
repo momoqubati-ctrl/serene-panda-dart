@@ -1,10 +1,23 @@
 import { createSocketServer } from "../socket";
+import { runAutoMigrations } from "../db/migrate";
+
+let migrationDone = false;
 
 export default (nitroApp: any) => {
   let initialized = false;
 
-  nitroApp.hooks.hook("request", (event: any) => {
+  nitroApp.hooks.hook("request", async (event: any) => {
     if (initialized) return;
+
+    // تشغيل الـ migrations تلقائياً مرة واحدة عند أول طلب
+    if (!migrationDone) {
+      try {
+        await runAutoMigrations();
+        migrationDone = true;
+      } catch (error) {
+        console.error("[Migration] Error running auto-migrations:", error);
+      }
+    }
 
     // Extract the raw HTTP server instance from the request/response socket
     const httpServer = event.node.req.socket?.server || event.node.res.socket?.server;
