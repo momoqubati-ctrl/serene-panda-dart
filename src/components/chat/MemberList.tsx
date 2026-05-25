@@ -129,54 +129,20 @@ const getCurrentMember = () => {
 const IDLE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) => {
+  const {
+    onlineUsers,
+    onlineCount,
+    mergeOnlineUser,
+    removeOnlineUser
+  } = useRealtimeStore();
+
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [onlineUsers, setOnlineUsers] = useState<OnlineMember[]>([]);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true); // Default to true since presence engine connects it
   const [myStatus, setMyStatus] = useState<PresenceStatus>("online");
   const myStatusRef = useRef<PresenceStatus>("online");
   const [userStatuses, setUserStatuses] = useState<Map<string, string>>(new Map());
   const [userCountries, setUserCountries] = useState<Map<string, string>>(new Map());
-
-  const mergeOnlineUser = (incoming: Partial<OnlineMember> & { id: string }) => {
-    const identity = getPresenceKey(incoming);
-    if (!identity) return;
-
-    setOnlineUsers((prev) => {
-      let found = false;
-      const next = prev.map((user) => {
-        if (getPresenceKey(user) !== identity) return user;
-        found = true;
-        const updated = { ...user } as any;
-        for (const [key, value] of Object.entries(incoming)) {
-          if (value !== undefined) {
-            updated[key] = value;
-          }
-        }
-        return updated;
-      });
-      if (!found) {
-        next.push(incoming as OnlineMember);
-      }
-      return next;
-    });
-  };
-
-  const removeOnlineUser = (target: { id?: string; socketId?: string; username?: string; name?: string; role?: string }) => {
-    const identity = getPresenceKey(target);
-    setOnlineUsers((prev) => prev.filter((user) => getPresenceKey(user) !== identity));
-    setUserStatuses((prev) => {
-      const next = new Map(prev);
-      next.delete(identity);
-      return next;
-    });
-    setUserCountries((prev) => {
-      const next = new Map(prev);
-      next.delete(identity);
-      return next;
-    });
-  };
 
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualStatusRef = useRef<string | null>(null);
@@ -184,234 +150,43 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
   const [profileTrigger, setProfileTrigger] = useState(0);
   const currentMember = useMemo(() => getCurrentMember(), [profileTrigger]);
 
-  // ===== Idle Detection for Current User =====
+  // Sync isConnected status with actual socket state
   useEffect(() => {
-    // Load manual status from sessionStorage (persists only for the session)
-    const storedManual = sessionStorage.getItem("manualStatus");
-    if (storedManual === "busy" || storedManual === "away") {
-      manualStatusRef.current = storedManual;
-      setMyStatus(storedManual as PresenceStatus);
-      myStatusRef.current = storedManual as PresenceStatus;
-      // Emit to server
-      const socket = getSocket();
-      socket.emit("status_update", { status: storedManual });
-      return; // Don't set up idle detection when manual status is active
-    }
+    const socket = getSocket();
+    setIsConnected(socket.connected);
 
-    const resetIdleTimer = () => {
-      // If manual status is set, don't auto-change
-      if (manualStatusRef.current) return;
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
 
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-
-      // Set to online on activity
-      setMyStatus((prev) => {
-        if (prev !== "online" && !manualStatusRef.current) {
-          const socket = getSocket();
-          socket.emit("status_update", { status: "online" });
-          myStatusRef.current = "online";
-          return "online";
-        }
-        return prev;
-      });
-
-      // Set idle after 2 minutes
-      idleTimerRef.current = setTimeout(() => {
-        if (manualStatusRef.current) return;
-        setMyStatus("idle");
-        myStatusRef.current = "idle";
-        const socket = getSocket();
-        socket.emit("status_update", { status: "idle" });
-      }, IDLE_TIMEOUT_MS);
-    };
-
-    const activityEvents = ["mousemove", "keydown", "click", "touchstart", "scroll"];
-    activityEvents.forEach((ev) => window.addEventListener(ev, resetIdleTimer));
-
-    // Start initial timer
-    resetIdleTimer();
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
 
     return () => {
-      activityEvents.forEach((ev) => window.removeEventListener(ev, resetIdleTimer));
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
     };
   }, []);
 
-  // ===== WebSocket Online Users =====
-  const fetchOnlineUsers = useCallback(() => {
-    const socket = getSocket();
-    socket.emit("get_online_users", (res: any) => {
-      if (res?.success) {
-        setOnlineUsers(res.users || []);
-        setOnlineCount(res.count || 0);
-        // Update statuses and countries from fetched data
-        const newStatuses = new Map<string, string>();
-        const newCountries = new Map<string, string>();
-        for (const u of res.users || []) {
-          const key = getPresenceKey(u);
-          if (!key) continue;
-          newStatuses.set(key, u.status || "online");
-          newCountries.set(key, u.countryCode || "SA");
-        }
-        setUserStatuses(newStatuses);
-        setUserCountries(newCountries);
-      }
-    });
-  }, []);
+  // Sync userStatuses and userCountries from onlineUsers list
+  useEffect(() => {
+    const newStatuses = new Map<string, string>();
+    const newCountries = new Map<string, string>();
+    for (const u of onlineUsers) {
+      const key = getPresenceKey(u);
+      if (!key) continue;
+      newStatuses.set(key, u.status || "online");
+      newCountries.set(key, u.countryCode || "SA");
+    }
+    setUserStatuses(newStatuses);
+    setUserCountries(newCountries);
+  }, [onlineUsers]);
 
+  // Keep user profile updated locally if updated
   useEffect(() => {
     const socket = getSocket();
-
-    const onConnect = () => {
-      setIsConnected(true);
-      fetchOnlineUsers();
-      socket.emit("status_update", { status: manualStatusRef.current || myStatusRef.current });
-    };
-
-    const onDisconnect = () => {
-      setIsConnected(false);
-    };
-
-    const onOnlineCount = (data: { count: number }) => {
-      setOnlineCount(data.count);
-    };
-
-    // Listen for real-time status updates from other users
-    const onUserStatusUpdate = (data: any) => {
-      if (!data?.userId && !data?.socketId) return;
-      const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
-      setUserStatuses((prev) => {
-        const next = new Map(prev);
-        next.set(identity, data.status || "online");
-        return next;
-      });
-      if (data.countryCode) {
-        setUserCountries((prev) => {
-          const next = new Map(prev);
-          next.set(identity, data.countryCode);
-          return next;
-        });
-      }
-      
-      const toMerge: any = {
-        id: data.userId || "0",
-        socketId: data.socketId,
-        username: data.username || "",
-        role: data.role || "guest",
-      };
-      if (data.status !== undefined) toMerge.status = data.status;
-      if (data.avatar !== undefined) toMerge.avatar = data.avatar;
-      if (data.avatarUrl !== undefined && !toMerge.avatar) toMerge.avatar = data.avatarUrl;
-      if (data.countryCode !== undefined) toMerge.countryCode = data.countryCode;
-      if (data.roomId !== undefined) toMerge.roomId = data.roomId;
-      if (data.idreg !== undefined) toMerge.idreg = data.idreg;
-      if (data.siteBadge !== undefined) toMerge.siteBadge = data.siteBadge;
-
-      mergeOnlineUser(toMerge);
-    };
-
-    const onUserCountryUpdate = (data: { userId: string; socketId?: string; username?: string; role?: string; countryCode: string }) => {
-      if (!data?.userId && !data?.socketId) return;
-      const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
-      setUserCountries((prev) => {
-        const next = new Map(prev);
-        next.set(identity, data.countryCode);
-        return next;
-      });
-      mergeOnlineUser({
-        id: data.userId || "0",
-        socketId: data.socketId,
-        username: data.username || "",
-        role: data.role || "guest",
-        countryCode: data.countryCode,
-      });
-    };
-
-    const onUserConnected = (data: any) => {
-      if (data?.userId || data?.socketId || data?.username) {
-        mergeOnlineUser({
-          id: data.userId || "0",
-          socketId: data.socketId,
-          username: data.username || "زائر",
-          role: data.role || "guest",
-          avatar: data.avatar || data.avatarUrl || "/pic.png",
-          countryCode: data.countryCode || "SA",
-          avatarFrameUrl: data.avatarFrameUrl || "",
-          giftIconUrl: data.giftIconUrl || "",
-          roomId: data.roomId || "",
-          status: data.status || "online",
-          idreg: data.idreg,
-          siteBadge: data.siteBadge,
-        });
-        const identity = getPresenceKey({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
-        setUserStatuses((prev) => {
-          const next = new Map(prev);
-          next.set(identity, data.status || "online");
-          return next;
-        });
-        if (data.countryCode) {
-          setUserCountries((prev) => {
-            const next = new Map(prev);
-            next.set(identity, data.countryCode);
-            return next;
-          });
-        }
-      }
-    };
-
-    const onUserDisconnected = (data: any) => {
-      if (data?.userId || data?.socketId || data?.username) {
-        removeOnlineUser({ id: data.userId, socketId: data.socketId, username: data.username, role: data.role });
-        if (typeof data.count === "number") {
-          setOnlineCount(data.count);
-        }
-      }
-    };
-
-    const onCountryResolved = (data: { countryCode: string }) => {
-      if (data?.countryCode) {
-        try {
-          const raw = localStorage.getItem("user");
-          if (raw) {
-            const user = JSON.parse(raw);
-            user.countryCode = data.countryCode;
-            localStorage.setItem("user", JSON.stringify(user));
-          }
-        } catch (e) {
-          console.error("Failed to update localStorage on country_resolved:", e);
-        }
-        if (currentMember) {
-          const identity = getPresenceKey(currentMember);
-          if (identity) {
-            setUserCountries((prev) => {
-              const next = new Map(prev);
-              next.set(identity, data.countryCode);
-              return next;
-            });
-          }
-        }
-      }
-    };
-
     const onUserProfileUpdated = (data: any) => {
       if (!data?.userId) return;
-
-      // Update online users list
-      setOnlineUsers((prev) =>
-        prev.map((u) => {
-          if (u.id === data.userId || u.username === data.username) {
-            return {
-              ...u,
-              avatar: data.avatar || data.avatarUrl || u.avatar,
-              profileCover: data.profileCover || u.profileCover,
-              statusMsg: data.profileMsg !== undefined ? data.profileMsg : u.statusMsg,
-            };
-          }
-          return u;
-        })
-      );
-
-      // Check if it is the currently selected user in ProfileModal
+      
       setSelectedUser((currentSelected: any) => {
         if (currentSelected && (currentSelected.id === data.userId || currentSelected.name === data.username)) {
           return {
@@ -424,40 +199,64 @@ const MemberList = ({ isSearchOpen = false, setIsSearchOpen }: MemberListProps) 
         return currentSelected;
       });
 
-      // Check if it is current user
       if (data.userId === currentMember?.id || data.username === currentMember?.name) {
         setProfileTrigger((prev) => prev + 1);
       }
     };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("online_count", onOnlineCount);
-    socket.on("user_status_update", onUserStatusUpdate);
-    socket.on("user_country_update", onUserCountryUpdate);
-    socket.on("user_connected", onUserConnected);
-    socket.on("user_disconnected", onUserDisconnected);
-    socket.on("country_resolved", onCountryResolved);
     socket.on("user_profile_updated", onUserProfileUpdated);
-
-    if (socket.connected) {
-      onConnect();
-    } else {
-      socket.connect();
-    }
-
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("online_count", onOnlineCount);
-      socket.off("user_status_update", onUserStatusUpdate);
-      socket.off("user_country_update", onUserCountryUpdate);
-      socket.off("user_connected", onUserConnected);
-      socket.off("user_disconnected", onUserDisconnected);
-      socket.off("country_resolved", onCountryResolved);
       socket.off("user_profile_updated", onUserProfileUpdated);
     };
-  }, [fetchOnlineUsers, currentMember]);
+  }, [currentMember]);
+
+  // ===== Idle Detection for Current User =====
+  useEffect(() => {
+    // Load manual status from sessionStorage
+    const storedManual = sessionStorage.getItem("manualStatus");
+    if (storedManual === "busy" || storedManual === "away") {
+      manualStatusRef.current = storedManual;
+      setMyStatus(storedManual as PresenceStatus);
+      myStatusRef.current = storedManual as PresenceStatus;
+      const socket = getSocket();
+      socket.emit("status_update", { status: storedManual });
+      return;
+    }
+
+    const resetIdleTimer = () => {
+      if (manualStatusRef.current) return;
+
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+
+      setMyStatus((prev) => {
+        if (prev !== "online" && !manualStatusRef.current) {
+          const socket = getSocket();
+          socket.emit("status_update", { status: "online" });
+          myStatusRef.current = "online";
+          return "online";
+        }
+        return prev;
+      });
+
+      idleTimerRef.current = setTimeout(() => {
+        if (manualStatusRef.current) return;
+        setMyStatus("idle");
+        myStatusRef.current = "idle";
+        const socket = getSocket();
+        socket.emit("status_update", { status: "idle" });
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const activityEvents = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    activityEvents.forEach((ev) => window.addEventListener(ev, resetIdleTimer));
+
+    resetIdleTimer();
+
+    return () => {
+      activityEvents.forEach((ev) => window.removeEventListener(ev, resetIdleTimer));
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   // ===== Build members list =====
   const members = useMemo(() => {

@@ -19,16 +19,24 @@ type Room = {
 
 const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    rooms,
+    isLoadingRooms: isLoading,
+    isRoomsLoaded,
+    setRooms,
+    setLoadingRooms,
+    updateRoomMemberCount
+  } = useRealtimeStore();
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let ignore = false;
+    if (isRoomsLoaded) return;
 
+    let ignore = false;
     const loadRooms = async () => {
       try {
         setError("");
+        setLoadingRooms(true);
         const response = await fetch("/api/rooms");
         const data = await response.json();
 
@@ -42,51 +50,17 @@ const RoomList = ({ onSelectRoom }: { onSelectRoom: (room: Room) => void }) => {
       } catch (err) {
         if (!ignore) {
           setError(err instanceof Error ? err.message : "تعذر تحميل الغرف");
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
+          setLoadingRooms(false);
         }
       }
     };
 
     loadRooms();
 
-    // تحديث أعداد الأعضاء من Socket.io بشكل لحظي عبر الأحداث وكاحتياط كل 5 ثوانٍ
-    const socket = getSocket();
-
-    const handleRoomCountUpdate = (data: { roomId: string; memberCount: number }) => {
-      if (ignore) return;
-      setRooms((prev) =>
-        prev.map((room) =>
-          room.id === data.roomId ? { ...room, members: data.memberCount } : room
-        )
-      );
-    };
-
-    socket.on("room_count_update", handleRoomCountUpdate);
-
-    const refreshCounts = () => {
-      socket.emit("get_rooms", (res: any) => {
-        if (res?.success && !ignore) {
-          setRooms((prev) =>
-            prev.map((room) => {
-              const updated = res.rooms?.find((r: any) => r.id === room.id);
-              return updated ? { ...room, members: updated.members } : room;
-            }),
-          );
-        }
-      });
-    };
-
-    const interval = setInterval(refreshCounts, 5000);
-
     return () => {
       ignore = true;
-      clearInterval(interval);
-      socket.off("room_count_update", handleRoomCountUpdate);
     };
-  }, []);
+  }, [isRoomsLoaded, setRooms, setLoadingRooms]);
 
   const filteredRooms = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

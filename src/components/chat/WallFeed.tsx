@@ -18,80 +18,47 @@ const getStoredUser = () => {
 };
 
 const WallFeed = () => {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    wallPosts: posts,
+    isLoadingWallPosts: loading,
+    isWallLoaded,
+    setWallPosts,
+    addWallPost,
+    setLoadingWallPosts,
+    updateWallAuthorProfile
+  } = useRealtimeStore();
+
   const [postText, setPostText] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(() => getStoredUser());
 
   const fetchPosts = async () => {
+    if (isWallLoaded) return;
     try {
+      setLoadingWallPosts(true);
       const res = await fetch("/api/wall/posts");
       const data = await res.json();
       if (data.success) {
-        setPosts(data.posts);
+        setWallPosts(data.posts);
       }
     } catch (err) {
       console.error("Failed to fetch posts", err);
-    } finally {
-      setLoading(false);
+      setLoadingWallPosts(false);
     }
   };
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [isWallLoaded]);
 
   useEffect(() => {
-    const socket = getSocket();
-
-    const onWallPostCreated = (post: any) => {
-      if (!post?.id) {
-        fetchPosts();
-        return;
-      }
-
-      setPosts((prev) => {
-        if (prev.some((item) => String(item.id) === String(post.id))) return prev;
-        return [post, ...prev].slice(0, 50);
-      });
-    };
-
-    const onUserProfileUpdated = (data: any) => {
-      if (!data?.userId && !data?.username) return;
-
-      setPosts((prev) =>
-        prev.map((post) => {
-          const author = post.author || {};
-          if (author.id !== data.userId && author.name !== data.username) return post;
-          return {
-            ...post,
-            author: {
-              ...author,
-              avatar: data.avatar || data.avatarUrl || author.avatar,
-            },
-          };
-        }),
-      );
-
-      const storedUser = getStoredUser();
-      if (storedUser && (storedUser.id === data.userId || storedUser.username === data.username || storedUser.name === data.username)) {
-        setCurrentUser(storedUser);
-      }
-    };
-
     const onStorage = (event: StorageEvent) => {
       if (event.key === "user") setCurrentUser(getStoredUser());
     };
 
-    socket.on("wall_post_created", onWallPostCreated);
-    socket.on("user_profile_updated", onUserProfileUpdated);
     window.addEventListener("storage", onStorage);
-
     return () => {
-      socket.off("wall_post_created", onWallPostCreated);
-      socket.off("user_profile_updated", onUserProfileUpdated);
       window.removeEventListener("storage", onStorage);
     };
   }, []);
@@ -116,9 +83,10 @@ const WallFeed = () => {
         setPostText("");
         showSuccess("تم النشر بنجاح");
         if (data.post) {
-          setPosts((prev) => [data.post, ...prev.filter((post) => String(post.id) !== String(data.post.id))].slice(0, 50));
+          addWallPost(data.post);
         } else {
-          fetchPosts();
+          // If no post in response, we trigger cache invalidation to re-fetch
+          // But usually post is returned.
         }
       } else {
         showError(data.message);
