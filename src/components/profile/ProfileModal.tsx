@@ -23,9 +23,12 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
     setLoading(true);
 
     socket.emit("profile:view", { profileId, hidden: isAdmin }, (response: any) => {
-      if (response.success) {
+      if (response && response.success) {
         setProfileData(response.profile);
         setStats(response.stats);
+      } else {
+        alert(response?.error || "تعذر تحميل بيانات الملف الشخصي");
+        onClose();
       }
       setLoading(false);
     });
