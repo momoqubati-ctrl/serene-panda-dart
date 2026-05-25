@@ -9,17 +9,45 @@ export async function runAutoMigrations() {
   try {
     console.log("[Migration] بدء فحص الجداول الناقصة...");
 
-    // 1. تفعيل إضافة pgcrypto لتوفير gen_random_uuid()
+    // 1. إنشاء أنواع الـ Enum أولاً إذا لم تكن موجودة
+    const enumQueries = [
+      `DO $$ BEGIN CREATE TYPE "account_role" AS ENUM ('guest','member','moderator','owner','admin','agent'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+      `DO $$ BEGIN CREATE TYPE "account_status" AS ENUM ('active','muted','banned','suspended','deleted'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+      `DO $$ BEGIN CREATE TYPE "edge_type" AS ENUM ('friend','follow','block','mute','mutual'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+      `DO $$ BEGIN CREATE TYPE "presence_status" AS ENUM ('online','idle','lurking','active','multitasking'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
+    ];
+    for (const q of enumQueries) {
+      await client.query(q).catch(() => { /* الـ enum موجود مسبقاً */ });
+    }
+
+    // 2. تفعيل إضافة pgcrypto لتوفير gen_random_uuid()
     await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
 
-    // 2. تعبئة قيم id الفارغة أو الـ NULL بـ UUID عشوائي
+    // 3. التحقق وإضافة الأعمدة الناقصة في جدول users (لأن الجدول موجود مسبقاً وقد تنقصه أعمدة جديدة)
+    await client.query(`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "id" uuid DEFAULT gen_random_uuid();
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "legacy_id" integer;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "display_name" varchar(120);
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_hash" text;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "role" "account_role" DEFAULT 'member';
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "status" "account_status" DEFAULT 'active';
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "cover_url" text;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "country_code" varchar(16);
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "presence" "presence_status" DEFAULT 'online';
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "last_active_at" timestamptz DEFAULT now();
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_at" timestamptz DEFAULT now();
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "updated_at" timestamptz DEFAULT now();
+    `);
+
+    // 4. تعبئة قيم id الفارغة أو الـ NULL بـ UUID عشوائي
     await client.query(`
       UPDATE "users"
       SET "id" = gen_random_uuid()
       WHERE "id" IS NULL OR "id"::text = '';
     `);
 
-    // 3. حل مشكلة قيم id المكررة (توليد UUID جديد للمكررات فقط والإبقاء على نسخة واحدة)
+    // 5. حل مشكلة قيم id المكررة (توليد UUID جديد للمكررات فقط والإبقاء على نسخة واحدة)
     await client.query(`
       UPDATE "users" u
       SET "id" = gen_random_uuid()
@@ -31,7 +59,7 @@ export async function runAutoMigrations() {
       WHERE u.idreg = dup.idreg AND dup.rn > 1;
     `);
 
-    // 4. التأكد من وجود قيد فريد على حقل id في جدول users لتمكين الجداول الأخرى من الإشارة إليه كمفتاح خارجي
+    // 6. التأكد من وجود قيد فريد على حقل id في جدول users لتمكين الجداول الأخرى من الإشارة إليه كمفتاح خارجي
     await client.query(`
       DO $$
       BEGIN
