@@ -1,5 +1,5 @@
 import { createSocketServer } from "../socket";
-import { runAutoMigrations } from "../db/migrate";
+import { runAutoMigrations, verifyDatabaseSchema } from "../db/migrate";
 
 let migrationDone = false;
 
@@ -14,6 +14,11 @@ export default (nitroApp: any) => {
       try {
         await runAutoMigrations();
         migrationDone = true;
+
+        const schemaCheck = await verifyDatabaseSchema();
+        if (schemaCheck.missingTables.length > 0) {
+          console.error("[Migration] Missing tables after auto-migration:", schemaCheck.missingTables);
+        }
       } catch (error) {
         console.error("[Migration] Error running auto-migrations:", error);
       }

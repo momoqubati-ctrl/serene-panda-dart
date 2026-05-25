@@ -379,3 +379,48 @@ export async function runAutoMigrations() {
     client.release();
   }
 }
+
+export async function verifyDatabaseSchema() {
+  const requiredTables = [
+    "users",
+    "user_profiles",
+    "profile_visits",
+    "user_verifications",
+    "social_edges",
+    "social_affinity",
+    "identity_effects",
+    "user_identity_state",
+    "behavior_scores",
+    "activity_stream",
+    "rooms",
+    "moderation_events",
+    "site_settings",
+    "chat_bots",
+    "moderation_filters",
+    "admin_audit_logs",
+    "wall_posts",
+    "wall_comments",
+    "wall_post_likes",
+    "roles",
+    "role_permissions",
+    "user_role_assignments",
+  ];
+
+  const client = await dbPool.connect();
+  try {
+    const result = await client.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ANY($1);`,
+      [requiredTables],
+    );
+
+    const existingTables = result.rows.map((row: { table_name: string }) => row.table_name);
+    const missingTables = requiredTables.filter((table) => !existingTables.includes(table));
+
+    return {
+      existingTables,
+      missingTables,
+    };
+  } finally {
+    client.release();
+  }
+}

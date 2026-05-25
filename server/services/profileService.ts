@@ -55,12 +55,21 @@ export class ProfileService {
   static async getFullProfile(userId: string) {
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
-      with: {
-        profile: true,
-      },
     });
 
     if (!user) return null;
-    return user;
+
+    try {
+      const profile = await db.query.userProfiles.findFirst({
+        where: eq(userProfiles.userId, userId),
+      });
+      return { ...user, profile };
+    } catch (error: any) {
+      if (error?.code === "42P01" || (typeof error?.message === "string" && error.message.includes("user_profiles"))) {
+        console.error("[ProfileService] user_profiles table missing, returning base user data only.");
+        return { ...user, profile: null };
+      }
+      throw error;
+    }
   }
 }

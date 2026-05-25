@@ -15,6 +15,7 @@
     "legacy:normalize-performance": "node scripts/legacy-normalize-performance.cjs",
     "legacy:create-admin": "node scripts/create-safarihost-admin.cjs",
     "db:migrate": "node scripts/apply-distributed-schema.cjs",
+    "db:verify": "node scripts/verify-db.cjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
