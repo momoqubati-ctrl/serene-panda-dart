@@ -14,6 +14,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 export const accountRole = pgEnum("account_role", ["guest", "member", "moderator", "owner", "admin", "agent"]);
 export const accountStatus = pgEnum("account_status", ["active", "muted", "banned", "suspended", "deleted"]);
@@ -412,4 +413,15 @@ export const userRoleAssignments = pgTable("user_role_assignments", {
 }, (table) => [
   primaryKey({ columns: [table.userId, table.roleId] })
 ]);
+
+export const usersRelations = relations(users, ({ one }) => ({
+  profile: one(userProfiles),
+}));
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
+}));
 
