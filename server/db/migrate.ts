@@ -47,7 +47,7 @@ export async function runAutoMigrations() {
     // --- 1. جدول user_profiles ---
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_profiles" (
-        "user_id" uuid PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
         "idreg" varchar(40),
         "lid" varchar(40),
         "uid" varchar(40),
@@ -123,7 +123,7 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_verifications" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "type" varchar(40) NOT NULL,
         "status" varchar(40) DEFAULT 'pending' NOT NULL,
         "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -137,8 +137,8 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "social_edges" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "source_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-        "target_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "source_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "target_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "type" varchar(20) NOT NULL,
         "weight" integer DEFAULT 1 NOT NULL,
         "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
@@ -150,8 +150,8 @@ export async function runAutoMigrations() {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "social_affinity" (
-        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-        "related_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "related_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "score" numeric(10,2) DEFAULT 0 NOT NULL,
         "interaction_count" integer DEFAULT 0 NOT NULL,
         "last_interaction_at" timestamptz,
@@ -175,7 +175,7 @@ export async function runAutoMigrations() {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_identity_state" (
-        "user_id" uuid PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
         "active_frame_id" uuid REFERENCES "identity_effects"("id"),
         "active_aura_id" uuid REFERENCES "identity_effects"("id"),
         "active_theme_id" varchar(80),
@@ -186,7 +186,7 @@ export async function runAutoMigrations() {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "behavior_scores" (
-        "user_id" uuid PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) PRIMARY KEY REFERENCES "users"("id") ON DELETE CASCADE,
         "trust_score" integer DEFAULT 50 NOT NULL,
         "toxicity_score" integer DEFAULT 0 NOT NULL,
         "influence_score" integer DEFAULT 0 NOT NULL,
@@ -198,7 +198,7 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "activity_stream" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "actor_id" uuid REFERENCES "users"("id") ON DELETE SET NULL,
+        "actor_id" varchar(255) REFERENCES "users"("id") ON DELETE SET NULL,
         "verb" varchar(64) NOT NULL,
         "object_type" varchar(64) NOT NULL,
         "object_id" varchar(128),
@@ -215,8 +215,8 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "moderation_events" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "actor_id" uuid REFERENCES "users"("id") ON DELETE SET NULL,
-        "target_user_id" uuid REFERENCES "users"("id") ON DELETE CASCADE,
+        "actor_id" varchar(255) REFERENCES "users"("id") ON DELETE SET NULL,
+        "target_user_id" varchar(255) REFERENCES "users"("id") ON DELETE CASCADE,
         "room_id" uuid,
         "event_type" varchar(64) NOT NULL,
         "reason" text,
@@ -229,7 +229,7 @@ export async function runAutoMigrations() {
       CREATE TABLE IF NOT EXISTS "site_settings" (
         "key" varchar(120) PRIMARY KEY,
         "value" jsonb DEFAULT '{}'::jsonb NOT NULL,
-        "updated_by" uuid REFERENCES "users"("id") ON DELETE SET NULL,
+        "updated_by" varchar(255) REFERENCES "users"("id") ON DELETE SET NULL,
         "updated_at" timestamptz DEFAULT now() NOT NULL
       );
     `);
@@ -265,7 +265,7 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "admin_audit_logs" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "actor_id" uuid REFERENCES "users"("id") ON DELETE SET NULL,
+        "actor_id" varchar(255) REFERENCES "users"("id") ON DELETE SET NULL,
         "action" varchar(120) NOT NULL,
         "target_type" varchar(64),
         "target_id" varchar(128),
@@ -277,7 +277,7 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "wall_posts" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        "author_id" uuid REFERENCES "users"("id") ON DELETE CASCADE,
+        "author_id" varchar(255) REFERENCES "users"("id") ON DELETE CASCADE,
         "body" text,
         "media_url" text,
         "created_at" timestamptz DEFAULT now() NOT NULL
@@ -288,7 +288,7 @@ export async function runAutoMigrations() {
       CREATE TABLE IF NOT EXISTS "wall_comments" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         "post_id" uuid REFERENCES "wall_posts"("id") ON DELETE CASCADE,
-        "author_id" uuid REFERENCES "users"("id") ON DELETE CASCADE,
+        "author_id" varchar(255) REFERENCES "users"("id") ON DELETE CASCADE,
         "body" text,
         "created_at" timestamptz DEFAULT now() NOT NULL
       );
@@ -297,7 +297,7 @@ export async function runAutoMigrations() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "wall_post_likes" (
         "post_id" uuid REFERENCES "wall_posts"("id") ON DELETE CASCADE,
-        "user_id" uuid REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) REFERENCES "users"("id") ON DELETE CASCADE,
         "created_at" timestamptz DEFAULT now() NOT NULL,
         PRIMARY KEY ("post_id", "user_id")
       );
@@ -334,9 +334,9 @@ export async function runAutoMigrations() {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_role_assignments" (
-        "user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "user_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
         "role_id" uuid NOT NULL REFERENCES "roles"("id") ON DELETE CASCADE,
-        "assigned_by" uuid REFERENCES "users"("id") ON DELETE SET NULL,
+        "assigned_by" varchar(255) REFERENCES "users"("id") ON DELETE SET NULL,
         "starts_at" timestamptz DEFAULT now() NOT NULL,
         "expires_at" timestamptz,
         "legacy_metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
