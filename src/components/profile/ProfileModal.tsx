@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "../ui/dialog";
-import { useSocket } from "../realtime/SocketProvider";
+import { getSocket } from "@/lib/socket";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileStats } from "./ProfileStats";
 import { ProfileActions } from "./ProfileActions";
@@ -13,13 +13,13 @@ interface ProfileModalProps {
 }
 
 export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps) {
-  const { socket } = useSocket();
+  const socket = getSocket();
   const [profileData, setProfileData] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!profileId || !socket) return;
+    if (!profileId) return;
     setLoading(true);
 
     socket.emit("profile:view", { profileId, hidden: isAdmin }, (response: any) => {
@@ -42,7 +42,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
     return () => {
       socket.off("profile:updated", onProfileUpdated);
     };
-  }, [profileId, socket, isAdmin]);
+  }, [profileId, isAdmin]);
 
   if (!profileId) return null;
 

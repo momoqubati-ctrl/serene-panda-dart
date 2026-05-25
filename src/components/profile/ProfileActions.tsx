@@ -1,4 +1,4 @@
-import { useSocket } from "../realtime/SocketProvider";
+import { getSocket } from "@/lib/socket";
 import { Button } from "../ui/button";
 import { MessageCircle, UserPlus, Heart, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -8,10 +8,11 @@ interface ProfileActionsProps {
 }
 
 export function ProfileActions({ profileId }: ProfileActionsProps) {
-  const { socket } = useSocket();
+  const socket = getSocket();
 
   const handleFollow = () => {
-    socket?.emit("profile:follow", { profileId }, (res: any) => {
+    if (!socket) return;
+    socket.emit("profile:follow", { profileId }, (res: any) => {
       if (res.success) {
         toast.success("تمت المتابعة بنجاح!");
       } else {
