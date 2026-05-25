@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +53,7 @@ const AddFilterDialog = ({ isOpen, onClose, onSuccess }: AddFilterDialogProps) =
       <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl rtl">
         <DialogHeader>
           <DialogTitle className="text-xl font-black text-slate-800 text-right">إضافة قانون جديد</DialogTitle>
+          <DialogDescription className="sr-only">نموذج إضافة قانون فلترة جديد لمحتوى الدردشة.</DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
 import { getSocket } from "@/lib/socket";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileStats } from "./ProfileStats";
@@ -53,6 +53,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
     <Dialog open={!!profileId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background/95 backdrop-blur-md rounded-2xl border-white/10" dir="rtl">
         <DialogTitle className="sr-only">عرض الملف الشخصي</DialogTitle>
+        <DialogDescription className="sr-only">تحميل وعرض بيانات الملف الشخصي للمستخدم.</DialogDescription>
         {loading || !profileData ? (
           <div className="flex h-64 items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

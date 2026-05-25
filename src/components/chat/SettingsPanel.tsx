@@ -333,6 +333,7 @@ const SettingsPanel = () => {
         <DialogContent className="max-w-md rounded-3xl p-6 bg-card border border-border text-foreground [direction:rtl]">
           <DialogHeader className="text-right">
             <DialogTitle className="text-lg font-bold">تعديل الملف الشخصي</DialogTitle>
+            <DialogDescription className="sr-only">نموذج تعديل إعدادات الملف الشخصي الخاصة بالمستخدم.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 my-4">

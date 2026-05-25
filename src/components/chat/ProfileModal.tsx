@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,7 @@ const ProfileModal = ({ user, isOpen, onClose, isAdmin = true }: ProfileModalPro
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden border-none rounded-3xl rtl">
         <DialogTitle className="sr-only">{user.name || "ملف العضو"}</DialogTitle>
+        <DialogDescription className="sr-only">عرض تفاصيل البروفايل داخل الدردشة.</DialogDescription>
         {/* Cover & Avatar */}
         <div
           className="relative h-32 bg-gradient-to-r from-primary to-blue-600 bg-cover bg-center"
