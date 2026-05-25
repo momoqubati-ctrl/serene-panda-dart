@@ -49,14 +49,14 @@ function Achievement({
   tone: keyof typeof achievementToneClasses;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white/85 p-4 text-center shadow-sm dark:border-white/10 dark:bg-slate-900/70">
-      <div className={`mx-auto grid h-14 w-14 place-items-center rounded-2xl border shadow-sm ${achievementToneClasses[tone]}`}>
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-900/70 sm:p-4">
+      <div className={`mx-auto grid h-14 w-14 place-items-center rounded-full border shadow-sm sm:h-16 sm:w-16 ${achievementToneClasses[tone]}`}>
         <div className="h-6 w-6">{icon}</div>
       </div>
       <div className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
         {value}
       </div>
-      <h4 className="mt-2 truncate text-sm font-black text-slate-950 dark:text-white">{title}</h4>
+      <h4 className="mt-2 truncate text-[13px] font-black text-slate-950 dark:text-white sm:text-sm">{title}</h4>
       <p className="mt-1 truncate text-xs font-bold text-slate-500 dark:text-slate-400">{description}</p>
     </div>
   );
@@ -135,26 +135,26 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
   return (
     <Dialog open={!!profileId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-4xl overflow-hidden rounded-[28px] border border-white/40 bg-white/95 p-0 text-slate-950 shadow-2xl shadow-slate-950/40 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 dark:text-white [&>button]:left-4 [&>button]:right-auto [&>button]:top-4 [&>button]:z-30 [&>button]:h-10 [&>button]:w-10 [&>button]:rounded-full [&>button]:bg-white/80 [&>button]:text-slate-700 [&>button]:opacity-100 [&>button]:shadow-sm dark:[&>button]:bg-slate-900/80 dark:[&>button]:text-white"
+        className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[920px] overflow-hidden rounded-[18px] border border-white/50 bg-white p-0 text-slate-950 shadow-[0_30px_90px_rgba(2,6,23,0.55)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950 dark:text-white sm:w-[min(920px,calc(100vw-3rem))] sm:rounded-[22px] [&>button]:right-4 [&>button]:left-auto [&>button]:top-4 [&>button]:z-30 [&>button]:grid [&>button]:h-11 [&>button]:w-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-slate-950/35 [&>button]:text-white [&>button]:opacity-100 [&>button]:shadow-sm [&>button]:backdrop-blur-md [&>button]:ring-0 [&>button]:ring-offset-0 [&>button]:hover:bg-slate-950/50"
         dir="rtl"
       >
         <DialogTitle className="sr-only">عرض الملف الشخصي</DialogTitle>
         <DialogDescription className="sr-only">تحميل وعرض بيانات الملف الشخصي للمستخدم.</DialogDescription>
         {loading || !profileData ? (
-          <div className="flex h-[520px] items-center justify-center bg-slate-50 dark:bg-slate-950">
+          <div className="flex h-[620px] items-center justify-center bg-slate-50 dark:bg-slate-950">
             <div className="h-14 w-14 animate-spin rounded-full border-4 border-violet-100 border-b-violet-600" />
           </div>
         ) : (
-          <div className="max-h-[92vh] overflow-y-auto bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.14),transparent_32%),linear-gradient(180deg,#f8fafc_0%,#ffffff_36%,#f8fafc_100%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.22),transparent_32%),linear-gradient(180deg,#020617_0%,#0f172a_36%,#020617_100%)]">
+          <div className="max-h-[94dvh] overflow-y-auto bg-white dark:bg-slate-950">
             <ProfileHeader profile={profile} user={profileData} />
 
-            <div className="space-y-5 px-4 pb-4 pt-20 sm:px-8 sm:pb-8">
+            <div className="space-y-5 px-4 pb-4 pt-5 sm:px-12 sm:pb-7 sm:pt-6">
               <ProfileStats stats={stats} />
 
-              <section className="grid gap-4 rounded-3xl border border-slate-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 md:grid-cols-[220px_1fr]">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-200 via-orange-300 to-amber-700 text-white shadow-lg shadow-amber-500/20">
-                    <Trophy className="h-12 w-12 drop-shadow" />
+              <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-900/70 sm:rounded-[20px] md:grid-cols-[220px_1fr]">
+                <div className="flex items-center gap-4 md:flex-col md:items-center md:justify-center md:text-center">
+                  <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-[24px] bg-gradient-to-br from-violet-100 via-violet-300 to-violet-800 text-white shadow-xl shadow-violet-500/20">
+                    <Trophy className="h-16 w-16 drop-shadow" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-black text-slate-500 dark:text-slate-400">الرتبة الحالية</p>
@@ -175,7 +175,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                     </div>
                     <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-black text-white">{progress}%</span>
                   </div>
-                  <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                  <div className="h-3.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
                       className="h-full rounded-full bg-gradient-to-l from-amber-400 via-pink-500 to-violet-700"
                       style={{ width: `${progress}%` }}
@@ -198,7 +198,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
               </section>
 
               {(profile?.youtubeUrl || profile?.youtube || profile?.youtub) && (
-                <section className="rounded-3xl border border-slate-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-900/70">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
                       <div className="grid h-12 w-12 place-items-center rounded-2xl bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-200">
@@ -228,7 +228,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                   <Medal className="h-5 w-5 text-violet-600" />
                   <h3 className="text-base font-black">الشارات</h3>
                 </div>
-                <div className="grid grid-cols-4 gap-3 rounded-3xl border border-slate-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 sm:grid-cols-8">
+                <div className="grid grid-cols-4 gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-inner dark:border-white/10 dark:bg-slate-900/70 sm:grid-cols-8 sm:p-4">
                   {["ملكي", "ماسي", "محادث", "خبير", "مجتمع", "محبوب", "نشط"].map((badge, index) => (
                     <div key={badge} className="group flex min-w-0 flex-col items-center gap-2">
                       <div className={`grid h-12 w-12 place-items-center rounded-2xl border shadow-sm ${index % 3 === 0 ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200" : index % 3 === 1 ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200" : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"}`}>
@@ -243,7 +243,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-slate-200/80 bg-white/85 p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-900/70">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-amber-200 to-amber-700 text-white">
@@ -267,7 +267,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
                     <Eye className="h-5 w-5 text-violet-600" />
                     <h3 className="text-base font-black">من زار ملفي الشخصي</h3>
                   </div>
-                  <div className="grid gap-2 rounded-3xl border border-slate-200/80 bg-white/85 p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 sm:grid-cols-2">
+                  <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-900/70 sm:grid-cols-2">
                     {visitors.slice(0, 6).map((visitor) => (
                       <div key={`${visitor.id}-${visitor.visitedAt}`} className="flex items-center gap-3 rounded-2xl bg-slate-50 p-2 dark:bg-slate-950/40">
                         <img src={visitor.avatarUrl || "/pic.png"} alt="" className="h-10 w-10 rounded-full object-cover" />

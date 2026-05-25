@@ -34,37 +34,37 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
   return (
     <header className="relative">
       <div
-        className="h-60 bg-cover bg-center sm:h-72"
+        className="h-[190px] bg-cover bg-center sm:h-[235px]"
         style={{
           backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.68)), url(${coverUrl})`,
         }}
       />
 
-      <div className="absolute right-4 top-4 z-20 sm:right-6">
+      <div className="absolute left-4 top-4 z-20 sm:left-6">
         <button
           type="button"
-          className="grid h-10 w-10 place-items-center rounded-full bg-slate-950/35 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-950/50"
+          className="grid h-11 w-11 place-items-center rounded-full bg-slate-950/35 text-white shadow-sm backdrop-blur-md transition hover:bg-slate-950/50"
           aria-label="خيارات الملف الشخصي"
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-10 sm:left-8">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-slate-950/35 px-3 py-2 text-xs font-black text-white shadow-sm backdrop-blur-md">
+      <div className="absolute bottom-5 right-5 z-10 sm:right-16">
+        <div className="inline-flex h-10 items-center gap-2 rounded-full border border-emerald-300/45 bg-slate-950/35 px-4 text-sm font-black text-white shadow-sm backdrop-blur-md">
           <span className={`h-3 w-3 rounded-full ${isOnline ? "bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.18)]" : "bg-slate-400"}`} />
           {isOnline ? "متصل الآن" : "غير متصل"}
         </div>
       </div>
 
-      <div className="relative -mt-8 rounded-t-[28px] border-t border-white/70 bg-white px-4 pb-6 pt-20 shadow-[0_-20px_45px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950 sm:px-8 sm:pt-10">
-        <div className="absolute -top-20 right-6 sm:-top-24 sm:right-10">
+      <div className="relative -mt-2 rounded-t-[24px] border-t border-white/80 bg-white px-4 pb-5 pt-[112px] shadow-[0_-20px_45px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950 sm:px-12 sm:pb-7 sm:pt-6">
+        <div className="absolute -top-20 left-5 sm:-top-24 sm:left-12">
           <div className="relative">
             <div
-              className="rounded-full p-1.5 shadow-2xl shadow-violet-500/20"
+              className="rounded-full p-1.5 shadow-2xl shadow-violet-500/25"
               style={{ background: `linear-gradient(135deg, ${accentColor}, #F59E0B)` }}
             >
-              <Avatar className="h-32 w-32 border-4 border-white shadow-xl dark:border-slate-950 sm:h-40 sm:w-40">
+              <Avatar className="h-36 w-36 border-[6px] border-white shadow-xl dark:border-slate-950 sm:h-44 sm:w-44">
                 <AvatarImage src={avatarUrl} alt={displayName} />
                 <AvatarFallback className="text-3xl font-black">{displayName[0]}</AvatarFallback>
               </Avatar>
@@ -76,21 +76,21 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
                 className="pointer-events-none absolute inset-0 h-full w-full scale-110 rounded-full object-cover"
               />
             )}
-            <span className="absolute bottom-4 left-3 h-8 w-8 rounded-full border-4 border-white bg-emerald-500 shadow-lg dark:border-slate-950" />
+            <span className="absolute bottom-5 right-2 h-8 w-8 rounded-full border-4 border-white bg-emerald-500 shadow-lg dark:border-slate-950" />
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 pr-0 sm:min-h-28 sm:pr-48 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="max-w-full truncate text-3xl font-black leading-tight text-slate-950 dark:text-white sm:text-4xl" style={{ color: nameColor }}>
+        <div className="flex min-h-[150px] flex-col gap-4 sm:min-h-[150px] sm:pl-56 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 text-right">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <h2 className="max-w-full truncate text-[34px] font-black leading-tight text-slate-950 dark:text-white sm:text-[42px]" style={{ color: nameColor }}>
                 {displayName}
               </h2>
               {profile?.documents && <Verified className="h-6 w-6 shrink-0 text-violet-600" />}
               {(user?.role === "admin" || user?.role === "owner") && <Shield className="h-6 w-6 shrink-0 text-red-500" />}
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400">
+            <div className="mt-2 flex flex-wrap items-center justify-end gap-2 text-sm font-bold text-slate-500 dark:text-slate-400">
               <span dir="ltr">@{handle}</span>
               <button
                 type="button"
@@ -107,7 +107,7 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
               {connectedSince && <span>{connectedSince}</span>}
             </div>
 
-            <div className="mt-3 flex items-center gap-1">
+            <div className="mt-3 flex items-center justify-end gap-1">
               {Array.from({ length: 5 }).map((_, index) => (
                 <Star
                   key={index}
@@ -126,12 +126,12 @@ export function ProfileHeader({ profile, user }: ProfileHeaderProps) {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            <Badge className="h-9 rounded-xl border-none bg-violet-600 px-3 text-sm font-black text-white shadow-lg shadow-violet-600/20">
+          <div className="flex flex-wrap justify-end gap-2 md:pt-20">
+            <Badge className="h-10 rounded-lg border-none bg-violet-600 px-4 text-sm font-black text-white shadow-lg shadow-violet-600/20">
               <Sparkles className="ml-1 h-4 w-4" />
               {profile?.siteBadge || "chatmaster"}
             </Badge>
-            <Badge className="h-9 rounded-xl border-none bg-gradient-to-l from-amber-700 to-amber-400 px-3 text-sm font-black text-white shadow-lg shadow-amber-600/20">
+            <Badge className="h-10 rounded-lg border-none bg-gradient-to-l from-amber-700 to-amber-400 px-4 text-sm font-black text-white shadow-lg shadow-amber-600/20">
               <Crown className="ml-1 h-4 w-4" />
               برونزي
             </Badge>

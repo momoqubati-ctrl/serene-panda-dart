@@ -54,21 +54,21 @@ export function ProfileStats({ stats }: ProfileStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {statItems.map((item) => (
         <div
           key={item.label}
-          className={`min-h-32 rounded-3xl border border-slate-200/80 bg-gradient-to-br p-4 shadow-sm dark:border-white/10 ${item.className} ${item.featured ? "shadow-lg" : "bg-white/85 dark:bg-slate-900/70"}`}
+          className={`min-h-[116px] rounded-2xl border border-slate-200 bg-gradient-to-br p-3 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 sm:min-h-[134px] sm:p-4 ${item.className} ${item.featured ? "shadow-lg" : "bg-white dark:bg-slate-900/70"}`}
         >
-          <div className="flex h-full items-center justify-between gap-3">
-            <div className={`grid h-16 w-16 shrink-0 place-items-center rounded-full ${item.featured ? "bg-white/15 text-amber-300 ring-1 ring-white/30" : "bg-white shadow-sm dark:bg-slate-950/60"}`}>
+          <div className="flex h-full items-center justify-between gap-2 sm:gap-3">
+            <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-full sm:h-16 sm:w-16 ${item.featured ? "bg-white/15 text-amber-300 ring-1 ring-white/30" : "bg-white shadow-sm dark:bg-slate-950/60"}`}>
               {item.icon}
             </div>
             <div className="min-w-0 text-left">
-              <div className={`truncate text-3xl font-black ${item.featured ? "text-white" : "text-slate-950 dark:text-white"}`}>
+              <div className={`truncate text-2xl font-black sm:text-3xl ${item.featured ? "text-white" : "text-slate-950 dark:text-white"}`}>
                 {formatNumber(Number(item.value || 0))}
               </div>
-              <div className={`mt-1 truncate text-sm font-black ${item.featured ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
+              <div className={`mt-1 truncate text-xs font-black sm:text-sm ${item.featured ? "text-white/85" : "text-slate-500 dark:text-slate-400"}`}>
                 {item.label}
               </div>
             </div>
