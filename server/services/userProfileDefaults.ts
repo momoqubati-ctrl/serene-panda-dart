@@ -12,6 +12,12 @@ export type UserProfileDefaults = {
   lid: string;
   uid: string;
   profileMsg: string;
+  bio: string;
+  mood: string;
+  customStatus: string;
+  stealth: boolean;
+  youtubeUrl: string;
+  autoplayEnabled: boolean;
   avatar: string;
   profileCover: string;
   profileBannerUrl: string;
@@ -58,6 +64,12 @@ export const createUserProfileDefaults = (role: AuthRole): UserProfileDefaults =
     lid: randomToken().slice(0, 31),
     uid: randomToken().slice(0, 22),
     profileMsg: isGuest ? "( غير مسجل )" : "(عضو جديد)",
+    bio: "",
+    mood: "",
+    customStatus: "",
+    stealth: false,
+    youtubeUrl: "",
+    autoplayEnabled: false,
     avatar: "/pic.png",
     profileCover: "/pich.png",
     profileBannerUrl: "/pich.png",

@@ -7,6 +7,7 @@ import type { Server as HttpServer } from "node:http";
 import { registerRoomHandlers } from "./roomHandlers";
 import { registerPresenceHandlers } from "./presenceHandlers";
 import { registerPrivateHandlers } from "./privateHandlers";
+import { registerProfileHandlers } from "./profileHandlers";
 import { configureSocketGateway, registerSocketConnection } from "./SocketGateway";
 import { initializeSocketBroker } from "./SocketBroker";
 
@@ -76,6 +77,8 @@ export function createSocketServer(httpServer: HttpServer): SocketIOServer {
     registerPresenceHandlers(io!, socket);
     // تسجيل أحداث الرسائل الخاصة
     registerPrivateHandlers(io!, socket);
+    // تسجيل أحداث الملف الشخصي
+    registerProfileHandlers(io!, socket);
 
     // إرسال تأكيد الاتصال
     socket.emit("connected", {

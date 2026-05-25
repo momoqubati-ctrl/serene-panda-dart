@@ -5,7 +5,13 @@ type DbProfileRow = {
   lid: string;
   uid: string;
   profileMsg: string;
-  avatarUrl: string;
+  bio: string | null;
+  mood: string | null;
+  customStatus: string | null;
+  stealth: boolean | null;
+  youtubeUrl: string | null;
+  autoplayEnabled: boolean | null;
+  avatarUrl: string | null;
   bannerUrl: string;
   themeId: string;
   avatarFrameUrl: string;
@@ -45,6 +51,12 @@ export const profileDefaultsToDb = (profile: UserProfileDefaults) => ({
   lid: profile.lid,
   uid: profile.uid,
   profileMsg: profile.profileMsg,
+  bio: profile.bio,
+  mood: profile.mood,
+  customStatus: profile.customStatus,
+  stealth: profile.stealth,
+  youtubeUrl: profile.youtubeUrl,
+  autoplayEnabled: profile.autoplayEnabled,
   avatarUrl: profile.avatar,
   bannerUrl: profile.profileBannerUrl,
   themeId: profile.profileThemeId,
@@ -85,7 +97,13 @@ export const dbProfileToPublic = (profile: DbProfileRow): UserProfileDefaults =>
   lid: profile.lid,
   uid: profile.uid,
   profileMsg: profile.profileMsg,
-  avatar: profile.avatarUrl,
+  bio: profile.bio || "",
+  mood: profile.mood || "",
+  customStatus: profile.customStatus || "",
+  stealth: profile.stealth ?? false,
+  youtubeUrl: profile.youtubeUrl || "",
+  autoplayEnabled: profile.autoplayEnabled ?? false,
+  avatar: profile.avatarUrl || "",
   profileCover: profile.bannerUrl,
   profileBannerUrl: profile.bannerUrl,
   profileThemeId: profile.themeId,

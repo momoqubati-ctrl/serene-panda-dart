@@ -147,6 +147,12 @@ export const userProfiles = pgTable("user_profiles", {
   lid: varchar("lid", { length: 40 }),
   uid: varchar("uid", { length: 40 }),
   profileMsg: text("profile_msg"),
+  bio: text("bio"),
+  mood: varchar("mood", { length: 120 }),
+  customStatus: text("custom_status"),
+  stealth: boolean("stealth").default(false),
+  youtubeUrl: text("youtube_url"),
+  autoplayEnabled: boolean("autoplay_enabled").default(false),
   avatarUrl: text("avatar_url"),
   bannerUrl: text("banner_url"),
   themeId: varchar("theme_id", { length: 80 }),
@@ -182,6 +188,30 @@ export const userProfiles = pgTable("user_profiles", {
   joinuser: bigint("joinuser", { mode: "number" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
+
+export const profileVisits = pgTable("profile_visits", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  visitorId: uuid("visitor_id").references(() => users.id, { onDelete: "cascade" }),
+  profileId: uuid("profile_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  visitedAt: timestamp("visited_at", { withTimezone: true }).defaultNow().notNull(),
+  hiddenVisit: boolean("hidden_visit").default(false).notNull(),
+  source: varchar("source", { length: 80 }),
+}, (table) => [
+  index("profile_visits_profile_idx").on(table.profileId),
+  index("profile_visits_visitor_idx").on(table.visitorId),
+]);
+
+export const userVerifications = pgTable("user_verifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  type: varchar("type", { length: 40 }).notNull(),
+  status: varchar("status", { length: 40 }).default("pending").notNull(),
+  metadata: jsonb("metadata").default({}).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("user_verifications_user_idx").on(table.userId),
+]);
 
 export const rooms = pgTable(
   "rooms",
