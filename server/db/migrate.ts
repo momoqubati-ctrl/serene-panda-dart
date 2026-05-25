@@ -9,6 +9,19 @@ export async function runAutoMigrations() {
   try {
     console.log("[Migration] بدء فحص الجداول الناقصة...");
 
+    // التأكد من وجود قيد فريد على حقل id في جدول users لتمكين الجداول الأخرى من الإشارة إليه كمفتاح خارجي
+    await client.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints 
+              WHERE table_name='users' AND constraint_name='users_id_unique'
+          ) THEN
+              ALTER TABLE "users" ADD CONSTRAINT "users_id_unique" UNIQUE ("id");
+          END IF;
+      END $$;
+    `);
+
     // --- 1. جدول user_profiles ---
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_profiles" (
