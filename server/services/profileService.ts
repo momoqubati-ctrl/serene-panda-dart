@@ -1,35 +1,9 @@
 import { db, dbPool } from "../db";
-import { userProfiles, users, profileVisits } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { userProfiles, users, profileVisits, socialEdges } from "../db/schema";
+import { eq, and } from "drizzle-orm";
 import { redis } from "./redis";
 
 export class ProfileService {
-  private static async resolveActualUserId(userId: string) {
-    if (!userId) return null;
-
-    const normalized = String(userId).trim();
-    if (!normalized) return null;
-
-    const query = `
-      SELECT id
-      FROM users
-      WHERE id = $1
-        OR uid = $1
-        OR idreg::text = $1
-        OR CONCAT('#', idreg::text) = $1
-        OR lower(username) = lower($1)
-      LIMIT 1
-    `;
-
-    try {
-      const result = await dbPool.query(query, [normalized]);
-      return result.rows[0]?.id ?? null;
-    } catch (error) {
-      console.warn('[ProfileService] fallback user lookup failed, trying direct id', error?.message || error);
-      return normalized;
-    }
-  }
-
   /**
    * Record a profile visit and cache the view count.
    */
@@ -37,28 +11,28 @@ export class ProfileService {
     if (visitorId === profileId) return; // Don't count self-views
 
     try {
-      const [resolvedVisitorId, resolvedProfileId] = await Promise.all([
-        ProfileService.resolveActualUserId(visitorId),
-        ProfileService.resolveActualUserId(profileId),
+      const [visitor, profile] = await Promise.all([
+        db.query.users.findFirst({ where: eq(users.id, visitorId) }),
+        db.query.users.findFirst({ where: eq(users.id, profileId) }),
       ]);
 
-      if (!resolvedVisitorId) {
-        console.warn(`[ProfileService] visitor ${visitorId} could not be resolved; skipping visit record`);
+      if (!visitor) {
+        console.warn(`[ProfileService] visitor ${visitorId} missing; skipping visit record`);
         return;
       }
-      if (!resolvedProfileId) {
-        console.warn(`[ProfileService] profile ${profileId} could not be resolved; skipping visit record`);
+      if (!profile) {
+        console.warn(`[ProfileService] profile ${profileId} missing; skipping visit record`);
         return;
       }
 
       await db.insert(profileVisits).values({
-        visitorId: resolvedVisitorId,
-        profileId: resolvedProfileId,
+        visitorId,
+        profileId,
         hiddenVisit: hidden,
       });
 
       if (!hidden) {
-        await redis.client?.hincrby(`profile:stats:${resolvedProfileId}`, "views", 1);
+        await redis.client?.hincrby(`profile:stats:${profileId}`, "views", 1);
       }
     } catch (err) {
       console.error('[ProfileService] recordVisit error', err);
@@ -69,13 +43,12 @@ export class ProfileService {
    * Get cached stats (views, followers, etc.)
    */
   static async getProfileStats(profileId: string) {
-    const resolvedProfileId = await ProfileService.resolveActualUserId(profileId) || profileId;
-    const cachedStats = await redis.client?.hgetall(`profile:stats:${resolvedProfileId}`);
+    const cachedStats = await redis.client?.hgetall(`profile:stats:${profileId}`);
     
     if (!cachedStats || Object.keys(cachedStats).length === 0) {
       // Fallback: sync from DB (simplified version)
       const profileInfo = await db.query.userProfiles.findFirst({
-        where: eq(userProfiles.userId, resolvedProfileId),
+        where: eq(userProfiles.userId, profileId),
       });
       return {
         views: profileInfo?.rep || 0,
@@ -97,18 +70,15 @@ export class ProfileService {
    * Fetch a full user profile for display.
    */
   static async getFullProfile(userId: string) {
-    const resolvedUserId = await ProfileService.resolveActualUserId(userId);
-    if (!resolvedUserId) return null;
-
     const user = await db.query.users.findFirst({
-      where: eq(users.id, resolvedUserId),
+      where: eq(users.id, userId),
     });
 
     if (!user) return null;
 
     try {
       const profile = await db.query.userProfiles.findFirst({
-        where: eq(userProfiles.userId, resolvedUserId),
+        where: eq(userProfiles.userId, userId),
       });
       return { ...user, profile };
     } catch (error: any) {
