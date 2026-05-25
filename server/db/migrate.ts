@@ -9,7 +9,29 @@ export async function runAutoMigrations() {
   try {
     console.log("[Migration] بدء فحص الجداول الناقصة...");
 
-    // التأكد من وجود قيد فريد على حقل id في جدول users لتمكين الجداول الأخرى من الإشارة إليه كمفتاح خارجي
+    // 1. تفعيل إضافة pgcrypto لتوفير gen_random_uuid()
+    await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+
+    // 2. تعبئة قيم id الفارغة أو الـ NULL بـ UUID عشوائي
+    await client.query(`
+      UPDATE "users"
+      SET "id" = gen_random_uuid()
+      WHERE "id" IS NULL OR "id"::text = '';
+    `);
+
+    // 3. حل مشكلة قيم id المكررة (توليد UUID جديد للمكررات فقط والإبقاء على نسخة واحدة)
+    await client.query(`
+      UPDATE "users" u
+      SET "id" = gen_random_uuid()
+      FROM (
+        SELECT idreg, ROW_NUMBER() OVER (PARTITION BY id ORDER BY idreg) as rn
+        FROM "users"
+        WHERE id IS NOT NULL
+      ) dup
+      WHERE u.idreg = dup.idreg AND dup.rn > 1;
+    `);
+
+    // 4. التأكد من وجود قيد فريد على حقل id في جدول users لتمكين الجداول الأخرى من الإشارة إليه كمفتاح خارجي
     await client.query(`
       DO $$
       BEGIN
