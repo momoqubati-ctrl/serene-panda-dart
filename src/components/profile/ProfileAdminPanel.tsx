@@ -8,30 +8,35 @@ interface ProfileAdminPanelProps {
 
 export function ProfileAdminPanel({ profileId, currentRole }: ProfileAdminPanelProps) {
   return (
-    <div className="mt-4 p-4 border border-red-500/30 bg-red-500/5 rounded-xl">
-      <div className="flex items-center gap-2 mb-4 text-red-500">
-        <ShieldAlert className="w-5 h-5" />
-        <h3 className="font-bold text-sm">لوحة تحكم الإدارة (#myadmin)</h3>
+    <section className="rounded-3xl border border-red-200/80 bg-red-50/80 p-4 shadow-sm dark:border-red-500/20 dark:bg-red-500/10">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-red-700 dark:text-red-200">
+          <ShieldAlert className="h-5 w-5" />
+          <h3 className="text-sm font-black">أدوات الإدارة</h3>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black text-red-700 shadow-sm dark:bg-slate-950/40 dark:text-red-200">
+          {currentRole || "member"} · {profileId}
+        </span>
       </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        <Button variant="outline" size="sm" className="gap-2 border-red-200 hover:bg-red-50 text-red-700">
-          <Edit2 className="w-3 h-3" />
+
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+          <Edit2 className="ml-2 h-4 w-4" />
           تغيير النك
         </Button>
-        <Button variant="outline" size="sm" className="gap-2 border-red-200 hover:bg-red-50 text-red-700">
-          <Settings className="w-3 h-3" />
-          الترقية والصلاحيات
+        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+          <Settings className="ml-2 h-4 w-4" />
+          الصلاحيات
         </Button>
-        <Button variant="outline" size="sm" className="gap-2 border-red-200 hover:bg-red-50 text-red-700">
-          <MicOff className="w-3 h-3" />
+        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+          <MicOff className="ml-2 h-4 w-4" />
           إسكات عام
         </Button>
-        <Button variant="outline" size="sm" className="gap-2 border-red-200 hover:bg-red-50 text-red-700">
-          <UserMinus className="w-3 h-3" />
+        <Button variant="outline" size="sm" className="h-11 rounded-2xl border-red-200 bg-white text-xs font-black text-red-700 hover:bg-red-50 dark:border-red-500/20 dark:bg-slate-950/40 dark:text-red-200">
+          <UserMinus className="ml-2 h-4 w-4" />
           طرد نهائي
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
