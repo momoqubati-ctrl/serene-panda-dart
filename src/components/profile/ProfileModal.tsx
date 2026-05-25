@@ -23,7 +23,7 @@ export function ProfileModal({ profileId, onClose, isAdmin }: ProfileModalProps)
     setLoading(true);
 
     socket.emit("profile:view", { profileId, hidden: isAdmin }, (response: any) => {
-      if (response && response.success) {
+      if (response && response.success && response.profile) {
         setProfileData(response.profile);
         setStats(response.stats);
       } else {

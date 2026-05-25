@@ -19,6 +19,10 @@ export function registerProfileHandlers(io: SocketIOServer, socket: Socket) {
       await ProfileService.recordVisit(userId, profileId, !!isHiddenVisit);
       
       const profile = await ProfileService.getFullProfile(profileId);
+      if (!profile) {
+        return callback?.({ error: "Profile not found" });
+      }
+
       const stats = await ProfileService.getProfileStats(profileId);
       
       // Notify the target user that their profile was viewed
