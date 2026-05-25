@@ -8,6 +8,7 @@ import { Heart, MessageCircle, Share2, MoreHorizontal, Image as ImageIcon, Mic, 
 import { Input } from "@/components/ui/input";
 import { showSuccess, showError } from "@/utils/toast";
 import { getSocket } from "@/lib/socket";
+import { useRealtimeStore } from "@/lib/realtime-store";
 
 const getStoredUser = () => {
   try {

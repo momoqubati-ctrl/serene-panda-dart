@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import StoriesBar from './StoriesBar';
 import { getCountryFlagSrc, normalizeCountryCode } from "@/lib/countries";
 import { getSocket } from "@/lib/socket";
+import { useRealtimeStore } from "@/lib/realtime-store";
 
 interface MemberListProps {
   isSearchOpen?: boolean;

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Users, Lock, Mic2, Heart, Search, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getSocket } from "@/lib/socket";
+import { useRealtimeStore } from "@/lib/realtime-store";
 
 type Room = {
   id: string;
