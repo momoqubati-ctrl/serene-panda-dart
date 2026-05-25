@@ -372,17 +372,6 @@ export async function runAutoMigrations() {
       );
     `);
 
-    // Enum types (تجاهل الخطأ إذا كانت موجودة)
-    const enumQueries = [
-      `DO $$ BEGIN CREATE TYPE "account_role" AS ENUM ('guest','member','moderator','owner','admin','agent'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-      `DO $$ BEGIN CREATE TYPE "account_status" AS ENUM ('active','muted','banned','suspended','deleted'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-      `DO $$ BEGIN CREATE TYPE "edge_type" AS ENUM ('friend','follow','block','mute','mutual'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-      `DO $$ BEGIN CREATE TYPE "presence_status" AS ENUM ('online','idle','lurking','active','multitasking'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
-    ];
-    for (const q of enumQueries) {
-      await client.query(q).catch(() => { /* الـ enum موجود مسبقاً */ });
-    }
-
     console.log("[Migration] ✅ تم فحص وإنشاء جميع الجداول الناقصة بنجاح");
   } catch (error) {
     console.error("[Migration] ❌ خطأ أثناء تشغيل الـ migrations:", error);
