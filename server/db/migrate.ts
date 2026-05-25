@@ -132,20 +132,20 @@ export async function runAutoMigrations() {
       );
     `);
 
-    // --- 2. جدول profile_visits (النسخة الجديدة بـ UUID) ---
+    // --- 2. جدول profile_visits (إعادة إنشائه ليتوافق مع Drizzle والأنواع الجديدة) ---
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "profile_visits_v2_check" AS SELECT 1 WHERE false;
-      DROP TABLE "profile_visits_v2_check";
+      DROP TABLE IF EXISTS "profile_visits" CASCADE;
+      CREATE TABLE IF NOT EXISTS "profile_visits" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "visitor_id" varchar(255) REFERENCES "users"("id") ON DELETE CASCADE,
+        "profile_id" varchar(255) NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "visited_at" timestamptz DEFAULT now() NOT NULL,
+        "hidden_visit" boolean DEFAULT false NOT NULL,
+        "source" varchar(80)
+      );
+      CREATE INDEX IF NOT EXISTS "profile_visits_profile_idx" ON "profile_visits" ("profile_id");
+      CREATE INDEX IF NOT EXISTS "profile_visits_visitor_idx" ON "profile_visits" ("visitor_id");
     `);
-
-    // فحص هل جدول profile_visits موجود بالشكل الجديد (بـ uuid)
-    const pvCheck = await client.query(`
-      SELECT column_name, data_type FROM information_schema.columns
-      WHERE table_name = 'profile_visits' AND column_name = 'visitor_id'
-    `);
-
-    // إذا كان الجدول القديم (visitor_id = varchar) لا نلمسه
-    // الجدول الجديد في schema.ts يستخدم uuid - سيُنشأ من drizzle push إذا لزم
 
     // --- 3. جدول user_verifications ---
     await client.query(`
