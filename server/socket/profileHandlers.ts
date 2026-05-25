@@ -3,7 +3,7 @@ import { ProfileService } from "../services/profileService";
 import { db } from "../db";
 import { users, userProfiles } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { requirePermission } from "./permissionMiddleware";
+import { hasPermission } from "../services/permissionEngine";
 
 export function registerProfileHandlers(io: SocketIOServer, socket: Socket) {
   const userId = socket.data?.user?.id;
@@ -42,7 +42,7 @@ export function registerProfileHandlers(io: SocketIOServer, socket: Socket) {
       if (!userId) return callback?.({ error: "Unauthorized" });
       
       // Simplified check - full check would use permission engine
-      const hasPerm = await requirePermission(socket, "edituser");
+      const hasPerm = await hasPermission(userId, "edituser");
       if (!hasPerm) return callback?.({ error: "Permission denied" });
       
       const { profileId, updates } = data;
