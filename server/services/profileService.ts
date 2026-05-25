@@ -3,6 +3,134 @@ import { userProfiles, users, profileVisits, socialEdges } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { redis } from "./redis";
 
+const normalizeRole = (power: unknown, username: unknown) => {
+  const value = String(power || "").toLowerCase();
+  const user = String(username || "").toLowerCase();
+  if (user === "admin" || user === "safarihost" || ["owner", "ispower", "hide", "chatmaster"].includes(value)) return "owner";
+  if (["admin", "moderator"].includes(value)) return value;
+  return "member";
+};
+
+const toIsoDate = (value: unknown) => {
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) && timestamp > 0
+    ? new Date(timestamp).toISOString()
+    : new Date().toISOString();
+};
+
+const createLegacyProfileResult = (row: any) => {
+  const userId = String(row.uid || row.id || row.idreg || "");
+  const displayName = String(row.topic || row.username || "");
+
+  return {
+    id: userId,
+    legacyId: row.idreg ?? null,
+    username: String(row.username || ""),
+    displayName,
+    role: normalizeRole(row.power, row.username),
+    status: "active",
+    avatarUrl: row.pic || "/pic.png",
+    coverUrl: row.pich || "/pich.png",
+    countryCode: "SA",
+    presence: "online",
+    createdAt: toIsoDate(row.joinuser),
+    updatedAt: toIsoDate(row.lastssen),
+    profile: {
+      userId,
+      idreg: row.idreg ? `#${row.idreg}` : "",
+      lid: String(row.lid || ""),
+      uid: String(row.uid || row.id || ""),
+      profileMsg: String(row.msg || ""),
+      bio: "",
+      mood: "",
+      customStatus: "",
+      stealth: false,
+      youtubeUrl: String(row.youtub || ""),
+      autoplayEnabled: false,
+      avatarUrl: row.pic || "/pic.png",
+      bannerUrl: row.pich || "/pich.png",
+      themeId: String(row.them || ""),
+      avatarFrameUrl: String(row.cover || ""),
+      giftIconUrl: String(row.gift_ico || ""),
+      profileIconUrl: String(row.ico || ""),
+      nameGradient: "",
+      nameEffectId: "",
+      messageBubbleStyle: "default",
+      profileAccentColor: "#2563EB",
+      profileBackgroundUrl: String(row.cover || ""),
+      backgroundColor: String(row.bg || "#FFFFFF"),
+      messageColor: String(row.mcol || "#000000"),
+      nameColor: String(row.ucol || "#000000"),
+      gradientColor: String(row.gcol || "#FFFFFF"),
+      evaluation: Number(row.evaluation || 0),
+      rep: Number(row.rep || 0),
+      coins: Number(row.coins || 0),
+      wallPostLikes: Number(row.wall_post_likes || 0),
+      giftsReceivedCount: Number(row.gifts_received_count || 0),
+      power: String(row.power || ""),
+      icon: String(row.ico || ""),
+      isLogin: "عضو",
+      muted: Boolean(row.muted),
+      documents: Boolean(row.documentationc),
+      busy: false,
+      alerts: true,
+      nopmcall: false,
+      nopmvideocall: false,
+      roomId: "",
+      siteBadgeId: String(row.site_badge_id || ""),
+      siteBadge: String(row.site_badge || ""),
+      joinuser: Number(row.joinuser || Date.now()),
+      updatedAt: toIsoDate(row.lastssen),
+    },
+  };
+};
+
+const findLegacyUserProfile = async (profileId: string) => {
+  const normalized = String(profileId || "").trim();
+  if (!normalized) return null;
+
+  const result = await dbPool.query(
+    `SELECT *
+     FROM users
+     WHERE uid = $1
+        OR id = $1
+        OR CAST(idreg AS varchar) = $1
+        OR CONCAT('#', CAST(idreg AS varchar)) = $1
+        OR lower(username) = lower($1)
+     LIMIT 1`,
+    [normalized],
+  );
+
+  return result.rows[0] ? createLegacyProfileResult(result.rows[0]) : null;
+};
+
+const getLegacyProfileStats = async (profileId: string) => {
+  const normalized = String(profileId || "").trim();
+  if (!normalized) return null;
+
+  const result = await dbPool.query(
+    `SELECT rep, coins, evaluation, wall_post_likes
+     FROM users
+     WHERE uid = $1
+        OR id = $1
+        OR CAST(idreg AS varchar) = $1
+        OR CONCAT('#', CAST(idreg AS varchar)) = $1
+        OR lower(username) = lower($1)
+     LIMIT 1`,
+    [normalized],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    views: Number(row.rep || 0),
+    likes: Number(row.wall_post_likes || 0),
+    coins: Number(row.coins || 0),
+    evaluation: Number(row.evaluation || 0),
+  };
+};
+
 export class ProfileService {
   /**
    * Record a profile visit and cache the view count.
@@ -46,6 +174,15 @@ export class ProfileService {
     const cachedStats = await redis.client?.hgetall(`profile:stats:${profileId}`);
     
     if (!cachedStats || Object.keys(cachedStats).length === 0) {
+      try {
+        const legacyStats = await getLegacyProfileStats(profileId);
+        if (legacyStats) return legacyStats;
+      } catch (error: any) {
+        if (error?.code !== "42703" && error?.code !== "42P01") {
+          console.error("[ProfileService] legacy stats lookup error", error);
+        }
+      }
+
       // Fallback: sync from DB (simplified version)
       const profileInfo = await db.query.userProfiles.findFirst({
         where: eq(userProfiles.userId, profileId),
@@ -70,6 +207,15 @@ export class ProfileService {
    * Fetch a full user profile for display.
    */
   static async getFullProfile(userId: string) {
+    try {
+      const legacyProfile = await findLegacyUserProfile(userId);
+      if (legacyProfile) return legacyProfile;
+    } catch (error: any) {
+      if (error?.code !== "42703" && error?.code !== "42P01") {
+        console.error("[ProfileService] legacy profile lookup error", error);
+      }
+    }
+
     const user = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
