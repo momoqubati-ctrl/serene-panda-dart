@@ -26,8 +26,8 @@ export const socialEdges = pgTable(
   "social_edges",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    sourceId: uuid("source_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-    targetId: uuid("target_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    sourceId: varchar("source_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
+    targetId: varchar("target_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
     type: edgeType("type").notNull(),
     weight: integer("weight").default(1).notNull(),
     metadata: jsonb("metadata").default({}).notNull(),
@@ -44,8 +44,8 @@ export const socialEdges = pgTable(
 export const socialAffinity = pgTable(
   "social_affinity",
   {
-    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-    relatedId: uuid("related_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
+    relatedId: varchar("related_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
     score: numeric("score", { precision: 10, scale: 2 }).default("0").notNull(),
     interactionCount: integer("interaction_count").default(0).notNull(),
     lastInteractionAt: timestamp("last_interaction_at", { withTimezone: true }),
@@ -75,7 +75,7 @@ export const identityEffects = pgTable(
 export const userIdentityState = pgTable(
   "user_identity_state",
   {
-    userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 255 }).primaryKey().references(() => users.id, { onDelete: "cascade" }),
     activeFrameId: uuid("active_frame_id").references(() => identityEffects.id),
     activeAuraId: uuid("active_aura_id").references(() => identityEffects.id),
     activeThemeId: varchar("active_theme_id", { length: 80 }),
@@ -88,7 +88,7 @@ export const userIdentityState = pgTable(
 export const behaviorScores = pgTable(
   "behavior_scores",
   {
-    userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 255 }).primaryKey().references(() => users.id, { onDelete: "cascade" }),
     trustScore: integer("trust_score").default(50).notNull(),
     toxicityScore: integer("toxicity_score").default(0).notNull(),
     influenceScore: integer("influence_score").default(0).notNull(),
@@ -102,7 +102,7 @@ export const activityStream = pgTable(
   "activity_stream",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorId: varchar("actor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
     verb: varchar("verb", { length: 64 }).notNull(),
     objectType: varchar("object_type", { length: 64 }).notNull(),
     objectId: varchar("object_id", { length: 128 }),
@@ -122,7 +122,7 @@ export const activityStream = pgTable(
 export const users = pgTable(
   "users",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: varchar("id", { length: 255 }).primaryKey(),
     legacyId: integer("legacy_id"),
     username: varchar("username", { length: 64 }).notNull(),
     displayName: varchar("display_name", { length: 120 }).notNull(),
@@ -143,7 +143,7 @@ export const users = pgTable(
 );
 
 export const userProfiles = pgTable("user_profiles", {
-  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 255 }).primaryKey().references(() => users.id, { onDelete: "cascade" }),
   idreg: varchar("idreg", { length: 40 }),
   lid: varchar("lid", { length: 40 }),
   uid: varchar("uid", { length: 40 }),
@@ -192,8 +192,8 @@ export const userProfiles = pgTable("user_profiles", {
 
 export const profileVisits = pgTable("profile_visits", {
   id: uuid("id").defaultRandom().primaryKey(),
-  visitorId: uuid("visitor_id").references(() => users.id, { onDelete: "cascade" }),
-  profileId: uuid("profile_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  visitorId: varchar("visitor_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
+  profileId: varchar("profile_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
   visitedAt: timestamp("visited_at", { withTimezone: true }).defaultNow().notNull(),
   hiddenVisit: boolean("hidden_visit").default(false).notNull(),
   source: varchar("source", { length: 80 }),
@@ -204,7 +204,7 @@ export const profileVisits = pgTable("profile_visits", {
 
 export const userVerifications = pgTable("user_verifications", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
   type: varchar("type", { length: 40 }).notNull(),
   status: varchar("status", { length: 40 }).default("pending").notNull(),
   metadata: jsonb("metadata").default({}).notNull(),
@@ -221,7 +221,7 @@ export const rooms = pgTable(
     slug: varchar("slug", { length: 128 }).notNull(),
     name: varchar("name", { length: 160 }).notNull(),
     description: text("description"),
-    ownerId: uuid("owner_id").references(() => users.id),
+    ownerId: varchar("owner_id", { length: 255 }).references(() => users.id),
     avatarUrl: text("avatar_url"),
     isPublic: boolean("is_public").default(true).notNull(),
     settings: jsonb("settings").default({}).notNull(),
@@ -233,8 +233,8 @@ export const rooms = pgTable(
 
 export const moderationEvents = pgTable("moderation_events", {
   id: uuid("id").defaultRandom().primaryKey(),
-  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
-  targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
+  actorId: varchar("actor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+  targetUserId: varchar("target_user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   roomId: uuid("room_id").references(() => rooms.id, { onDelete: "set null" }),
   eventType: varchar("event_type", { length: 64 }).notNull(),
   reason: text("reason"),
@@ -245,7 +245,7 @@ export const moderationEvents = pgTable("moderation_events", {
 export const siteSettings = pgTable("site_settings", {
   key: varchar("key", { length: 120 }).primaryKey(),
   value: jsonb("value").default({}).notNull(),
-  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: varchar("updated_by", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -274,7 +274,7 @@ export const moderationFilters = pgTable("moderation_filters", {
 
 export const adminAuditLogs = pgTable("admin_audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorId: varchar("actor_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
   action: varchar("action", { length: 120 }).notNull(),
   targetType: varchar("target_type", { length: 64 }),
   targetId: varchar("target_id", { length: 128 }),
@@ -284,7 +284,7 @@ export const adminAuditLogs = pgTable("admin_audit_logs", {
 
 export const wallPosts = pgTable("wall_posts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   body: text("body"),
   mediaUrl: text("media_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -293,14 +293,14 @@ export const wallPosts = pgTable("wall_posts", {
 export const wallComments = pgTable("wall_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
   postId: uuid("post_id").references(() => wallPosts.id, { onDelete: "cascade" }),
-  authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   body: text("body"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const wallPostLikes = pgTable("wall_post_likes", {
   postId: uuid("post_id").references(() => wallPosts.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [primaryKey({ columns: [table.postId, table.userId] })]);
 
@@ -404,9 +404,9 @@ export const rolePermissions = pgTable("role_permissions", {
 ]);
 
 export const userRoleAssignments = pgTable("user_role_assignments", {
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
   roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }).notNull(),
-  assignedBy: uuid("assigned_by").references(() => users.id, { onDelete: "set null" }),
+  assignedBy: varchar("assigned_by", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
   startsAt: timestamp("starts_at", { withTimezone: true }).defaultNow().notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   legacyMetadata: jsonb("legacy_metadata").default({}).notNull(),
